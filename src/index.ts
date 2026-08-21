@@ -36,3 +36,5 @@ app.use("/api", routes);
 app.listen(8000, () => {
   console.log("typescript + express api is running on :8000");
 });
+
+export default app;
