@@ -1,7 +1,5 @@
 import request from "supertest";
-
 import app from "@/index.js";
-import { describe, test, expect } from "@jest/globals";
 
 describe("GET /api/test", () => {
   test("should return 200", async () => {
