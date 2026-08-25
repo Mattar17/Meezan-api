@@ -40,6 +40,9 @@ export async function createTask(req: AuthRequest, res: Response) {
 
     const parsed = createTaskSchema.safeParse(req.body);
     if (!parsed.success) {
+      logger.error(
+        `Invalid task creation data: ${JSON.stringify(parsed.error.flatten().fieldErrors)}`,
+      );
       return res.status(400).json({
         success: false,
         message: "بيانات غير صالحة لإنشاء المهمة",
