@@ -8,7 +8,7 @@ export const createTaskSchema = z
     title: z.string().min(1, "عنوان المهمة مطلوب"),
     description: z.string().optional(),
     case_id: z.string().uuid().optional().nullable(),
-    due_date: z.string().optional().nullable(),
+    due_date: z.string().date().optional().nullable(),
     status: z.enum(TASK_STATUSES).optional(),
     notes: z.string().optional(),
   })

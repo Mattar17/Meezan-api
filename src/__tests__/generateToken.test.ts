@@ -6,7 +6,7 @@ import {
   afterEach,
   jest,
 } from "@jest/globals";
-import generateToken from "@/Services/generateToken.js";
+import generateToken from "../Services/generateToken.js";
 import jwt from "jsonwebtoken";
 
 const mockPayload = {
