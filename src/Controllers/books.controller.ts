@@ -20,8 +20,9 @@ export async function GetAllCategories(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data: categories });
-  } catch (err: any) {
-    logger.error(`GetAllCategories error: ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`GetAllCategories error: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });
@@ -62,8 +63,9 @@ export async function CreateCategory(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data: insertedCategory });
-  } catch (err: any) {
-    logger.error(`error creating category: ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`error creating category: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء إنشاء التصنيف" });
@@ -153,8 +155,9 @@ export async function UploadBook(req: AuthRequest, res: Response) {
       data: insertedBook,
       message: "تم رفع الكتاب بنجاح",
     });
-  } catch (err: any) {
-    logger.error(`UploadBookController error: ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`UploadBookController error: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });
@@ -193,8 +196,9 @@ export async function GetAllBooksInCategory(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data: books });
-  } catch (err: any) {
-    logger.error(`GET all books error: ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`GET all books error: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });
@@ -234,6 +238,7 @@ export async function GetFileUrl(req: AuthRequest, res: Response) {
       .status(200)
       .json({ success: true, data: { url: data.signedUrl } });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error("GetFileUrl: unexpected error", {
       filePath: req.body?.filePath,
       error: err instanceof Error ? err.message : err,
@@ -288,8 +293,9 @@ export async function DeleteCategory(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, message: "تم حذف التصنيف" });
-  } catch (err: any) {
-    logger.error(`DeleteCategory error: ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`DeleteCategory error: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });
@@ -353,8 +359,9 @@ export async function DeleteBook(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, message: "تم حذف الكتاب" });
-  } catch (err: any) {
-    logger.error(`DeleteBook error: ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`DeleteBook error: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });
@@ -452,8 +459,9 @@ export async function UpdateBookInfo(req: AuthRequest, res: Response) {
       message: "تم تحديث بيانات الكتاب",
       book: updatedBook,
     });
-  } catch (err: any) {
-    logger.error(`UpdateBookInfo error: ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`UpdateBookInfo error: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });

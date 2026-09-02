@@ -65,8 +65,9 @@ export async function createCase(req: AuthRequest, res: Response) {
       message: "تم إنشاء القضية بنجاح",
       data: createdCase,
     });
-  } catch (error: any) {
-    logger.error(`Error creating the case : ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error creating the case : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "خطأ أثناء إضافة قضية" });
@@ -141,8 +142,9 @@ export async function getOfficeCases(req: AuthRequest, res: Response) {
       fetchedCases = data;
     }
     return res.status(200).json({ success: true, data: fetchedCases });
-  } catch (error: any) {
-    logger.error(`Error fetching office cases: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error fetching office cases: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تحميل قضايا المكتب" });
@@ -225,8 +227,9 @@ export async function assignLawyerToCase(req: AuthRequest, res: Response) {
         ? "تم إلغاء تعيين المحامي بنجاح"
         : "تم تعيين المحامي علي القضية بنجاح",
     });
-  } catch (error: any) {
-    logger.error(`Error assigning lawyer to case: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error assigning lawyer to case: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تعيين المحامي" });
@@ -279,8 +282,9 @@ export async function getCaseDetails(req: AuthRequest, res: Response) {
         .json({ success: false, message: "لا يمكنك الإطلاع علي هذه القضية" });
 
     return res.status(200).json({ success: true, data: fetchedCase });
-  } catch (error: any) {
-    logger.error(`Error fetching case details: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error fetching case details: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تحميل بيانات القضية" });
@@ -364,8 +368,9 @@ export async function updateCase(req: AuthRequest, res: Response) {
       data: updatedCase,
       message: "تم تعديل القضية بنجاح",
     });
-  } catch (error: any) {
-    logger.error(`Error udpating case: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error udpating case: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تعديل القضية" });
@@ -420,8 +425,9 @@ export async function deleteCase(req: AuthRequest, res: Response) {
       success: true,
       message: `تم حذف القضية رقم ${deletedCase.case_number}`,
     });
-  } catch (error: any) {
-    logger.error(`Error deleting case: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error deleting case: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء حذف القضية" });

@@ -13,7 +13,8 @@ async function numberOfDownloads(req: Request, res: Response) {
     );
 
     return res.status(200).json(analytics?.numberOfDownloads);
-  } catch (err: any) {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error("Error fetching downloads", {
       message: err.message,
       stack: err.stack,
@@ -35,7 +36,8 @@ async function increamentDownloads(req: Request, res: Response) {
     logger.info("Downloads incremented successfully");
 
     return res.status(200).json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error("Error incrementing downloads", {
       message: err.message,
       stack: err.stack,

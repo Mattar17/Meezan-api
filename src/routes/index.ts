@@ -13,6 +13,7 @@ import inviteRoutes from "./invites.routes.js";
 import caseRoutes from "./cases.routes.js";
 import taskRoutes from "./tasks.routes.js";
 import booksRoutes from "./books.routes.js";
+import clientRoutes from "./clients.routes.js";
 
 const router = express.Router();
 
@@ -35,5 +36,6 @@ router.use(inviteRoutes);
 router.use(caseRoutes);
 router.use(taskRoutes);
 router.use(booksRoutes);
+router.use(clientRoutes);
 
 export default router;

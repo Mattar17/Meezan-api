@@ -49,6 +49,7 @@ export const Login = async (req: Request, res: Response) => {
       data: { token: generatedToken, user: lawyerInfo },
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error(`Login error: ${err}`);
     return res
       .status(500)

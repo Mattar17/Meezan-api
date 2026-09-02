@@ -50,8 +50,9 @@ export async function PaymentIntention(req: Request, res: Response) {
       response,
       link: `https://accept.paymob.com/unifiedcheckout/?publicKey=${process.env.PAYMOB_PUBLIC_KEY}&clientSecret=${clientSecret}`,
     });
-  } catch (err: any) {
-    return res.status(500).json(`${err.message}: Failed to create payment`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return res.status(500).json(`${message}: Failed to create payment`);
   }
 }
 //https://accept.paymob.com/unifiedcheckout/?publicKey={your_public_key}&clientSecret={the_client_secret}'
@@ -100,6 +101,7 @@ export async function handlePaymentWebhook(req: Request, res: Response) {
     // 5. Always respond quickly
     return res.status(200).json({ received: true });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error("Webhook error:", err);
     return res.status(500).json({ error: "Server error" });
   }

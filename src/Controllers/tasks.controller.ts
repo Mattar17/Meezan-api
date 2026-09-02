@@ -85,8 +85,9 @@ export async function createTask(req: AuthRequest, res: Response) {
       message: "تم إضافة المهمة بنجاح",
       data: createdTask,
     });
-  } catch (error: any) {
-    logger.error(`Error creating task: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error creating task: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "خطأ أثناء إضافة المهمة" });
@@ -162,8 +163,9 @@ export async function getOfficeTasks(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data: fetchedTasks });
-  } catch (error: any) {
-    logger.error(`Error fetching office tasks: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error fetching office tasks: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تحميل مهام المكتب" });
@@ -215,8 +217,9 @@ export async function getTaskDetails(req: AuthRequest, res: Response) {
         .json({ success: false, message: "لا يمكنك الإطلاع علي هذه المهمة" });
 
     return res.status(200).json({ success: true, data: fetchedTask });
-  } catch (error: any) {
-    logger.error(`Error fetching task details: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error fetching task details: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تحميل بيانات المهمة" });
@@ -270,6 +273,9 @@ export async function updateTask(req: AuthRequest, res: Response) {
     const parsed = schema.safeParse(req.body);
 
     if (!parsed.success) {
+      logger.error(
+        `Invalid task update data: ${JSON.stringify(parsed.error.flatten().fieldErrors)}`,
+      );
       return res.status(400).json({
         success: false,
         message: "بيانات غير صالحة للتعديل",
@@ -294,8 +300,9 @@ export async function updateTask(req: AuthRequest, res: Response) {
       data: updatedTask,
       message: "تم تعديل المهمة بنجاح",
     });
-  } catch (error: any) {
-    logger.error(`Error updating task: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error updating task: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تعديل المهمة" });
@@ -379,8 +386,9 @@ export async function assignLawyerToTask(req: AuthRequest, res: Response) {
         ? "تم تعيين المحامي علي المهمة بنجاح"
         : "تم إلغاء تعيين المحامي بنجاح",
     });
-  } catch (error: any) {
-    logger.error(`Error assigning lawyer to task: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error assigning lawyer to task: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تعيين المحامي" });
@@ -440,8 +448,9 @@ export async function deleteTask(req: AuthRequest, res: Response) {
       success: true,
       message: `تم حذف المهمة "${deletedTask.title}"`,
     });
-  } catch (error: any) {
-    logger.error(`Error deleting task: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Error deleting task: ${message}`);
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء حذف المهمة" });

@@ -39,8 +39,9 @@ export const getLawyerById = async (req: Request, res: Response) => {
       success: true,
       data,
     });
-  } catch (err: any) {
-    logger.error(`Unexpected error: ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`Unexpected error: ${message}`);
 
     return res.status(500).json({
       success: false,
@@ -65,8 +66,9 @@ export const getAllLawyersAdmin = async (req: AuthRequest, res: Response) => {
       count: data.length,
       data,
     });
-  } catch (err: any) {
-    logger.error("Error fetching lawyers", { message: err.message });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error("Error fetching lawyers", { message: message });
 
     return res.status(500).json({
       success: false,
@@ -91,8 +93,9 @@ export const getAllLawyersPublic = async (req: AuthRequest, res: Response) => {
       count: data.length,
       data: LawyersDTO,
     });
-  } catch (err: any) {
-    logger.error("Error fetching lawyers", { message: err.message });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error("Error fetching lawyers", { message: message });
 
     return res.status(500).json({
       success: false,
@@ -123,7 +126,8 @@ export const getLawyerByToken = async (req: AuthRequest, res: Response) => {
       success: true,
       data,
     });
-  } catch (err: any) {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error("Error fetching lawyer by token", {
       message: err.message,
     });
@@ -176,8 +180,9 @@ export const createLawyer = async (req: AuthRequest, res: Response) => {
       success: true,
       data,
     });
-  } catch (err: any) {
-    logger.error("Error creating lawyer", { message: err.message });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error("Error creating lawyer", { message: message });
 
     return res.status(400).json({
       success: false,
@@ -220,8 +225,9 @@ export const updateLawyer = async (req: AuthRequest, res: Response) => {
       success: true,
       data,
     });
-  } catch (err: any) {
-    logger.error("Error updating lawyer", { message: err.message });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error("Error updating lawyer", { message: message });
 
     return res.status(400).json({
       success: false,
@@ -251,8 +257,9 @@ export const deleteLawyer = async (req: AuthRequest, res: Response) => {
       success: true,
       message: "Lawyer deleted successfully",
     });
-  } catch (err: any) {
-    logger.error("Error deleting lawyer", { message: err.message });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error("Error deleting lawyer", { message: message });
 
     return res.status(500).json({
       success: false,
@@ -309,7 +316,8 @@ export const updateProfilePassword = async (
       success: true,
       message: "تم تغيير كلمة المرور بنجاج",
     });
-  } catch (err: any) {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error("حدث خطأ!! حاول مرةً أخرى", {
       message: err.message,
     });
@@ -367,7 +375,8 @@ export const updatePortalPassword = async (req: AuthRequest, res: Response) => {
       success: true,
       message: "تم تغيير كلمة مرور بوابتك بنجاج",
     });
-  } catch (err: any) {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error("Error updating portal password", {
       message: err.message,
     });
@@ -429,6 +438,7 @@ export const setProfilePicture = async (req: Request, res: Response) => {
       message: "تم تعديل الصورة الشخصية بنجاح",
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     return res.status(500).json({
       success: false,
       message: err instanceof Error ? err.message : "Unknown error",

@@ -73,7 +73,8 @@ export default async function ActivateLicense(req: Request, res: Response) {
       success: true,
       data: signedLicense,
     });
-  } catch (err: any) {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error("ActivateLicense error", {
       message: err.message,
       stack: err.stack,

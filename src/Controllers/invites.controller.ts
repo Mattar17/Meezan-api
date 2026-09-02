@@ -84,8 +84,9 @@ export async function CreateInvite(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data });
-  } catch (err: any) {
-    logger.error(`[Invite Create] : ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[Invite Create] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${err.message}` });
@@ -130,8 +131,9 @@ export async function getOfficeInvites(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data });
-  } catch (err: any) {
-    logger.error(`[Invite Fetch] : ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[Invite Fetch] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${err.message}` });
@@ -170,8 +172,9 @@ export async function getMyInvites(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data });
-  } catch (err: any) {
-    logger.error(`[Invite Fetch Mine] : ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[Invite Fetch Mine] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${err.message}` });
@@ -262,8 +265,9 @@ export async function respondToInvite(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data: updatedInvite });
-  } catch (err: any) {
-    logger.error(`[Invite Respond] : ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[Invite Respond] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${err.message}` });
@@ -309,8 +313,9 @@ export async function cancelInvite(req: AuthRequest, res: Response) {
     return res
       .status(200)
       .json({ success: true, message: "Invite cancelled." });
-  } catch (err: any) {
-    logger.error(`[Invite Cancel] : ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[Invite Cancel] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${err.message}` });

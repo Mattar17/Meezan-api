@@ -10,7 +10,7 @@ export const createTaskSchema = z
     case_id: z.string().uuid().optional().nullable(),
     due_date: z.string().date().optional().nullable(),
     status: z.enum(TASK_STATUSES).optional(),
-    notes: z.string().optional(),
+    notes: z.string().nullable().optional(),
   })
   .strict();
 
@@ -19,6 +19,8 @@ export const ownerUpdateTaskSchema = createTaskSchema.partial().strict();
 export const lawyerUpdateTaskSchema = z
   .object({
     status: z.enum(TASK_STATUSES).optional(),
-    notes: z.string().optional(),
+    notes: z.string().nullable().optional(),
+    due_date: z.string().date().optional().nullable(),
   })
+  .partial()
   .strict();

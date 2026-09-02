@@ -31,8 +31,9 @@ export async function CreateOffice(req: Request, res: Response) {
       console.log(error?.message);
       return res.status(200).json({ success: true, data });
     }
-  } catch (err: any) {
-    logger.error(`[Office Create] : ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[Office Create] : ${message}`);
   }
 }
 
@@ -48,8 +49,9 @@ export async function getMyOffices(req: AuthRequest, res: Response) {
       return res.json(error);
     }
     return res.status(200).json({ success: true, data });
-  } catch (err: any) {
-    logger.error(`[Offices fetch] : ${err.message}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[Offices fetch] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${err.message}` });
@@ -96,6 +98,7 @@ export const getOfficeById = async (req: Request, res: Response) => {
       office: data,
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error(`Unexpected error while fetching office. OfficeId=${id}`, err);
 
     return res.status(500).json({
@@ -173,6 +176,7 @@ export const updateOffice = async (req: AuthRequest, res: Response) => {
       office: data,
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error(`Unexpected error while updating office. OfficeId=${id}`, err);
 
     return res.status(500).json({

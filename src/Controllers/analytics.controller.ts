@@ -52,7 +52,8 @@ async function handleDownloads(req: Request, res: Response) {
     }
 
     return res.status(200).json(newValue);
-  } catch (err: any) {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error("Analytics error", {
       message: err.message,
       stack: err.stack,

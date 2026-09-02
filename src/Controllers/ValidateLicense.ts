@@ -45,6 +45,7 @@ export default async function ValidateLicense(
       .status(200)
       .json({ success: true, message: "Valid license", data: license });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     logger.error(`ValidateLicense error: ${err}`);
     return res.status(500).json({ success: false, message: "Server error" });
   }
