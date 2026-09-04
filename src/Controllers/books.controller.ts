@@ -4,6 +4,7 @@ import path from "path";
 import logger from "../utils/logger.js";
 import supabase from "../Services/supabaseClient.js";
 import { type AuthRequest } from "../types/AuthRequest.js";
+import { Database } from "@/types/database.types.js";
 
 export async function GetAllCategories(req: AuthRequest, res: Response) {
   try {
@@ -175,7 +176,7 @@ export async function GetAllBooksInCategory(req: AuthRequest, res: Response) {
     const { data: fetchedCategory, error: catError } = await supabase
       .from("categories")
       .select("id,name")
-      .eq("id", categoryId)
+      .eq("id", categoryId as string)
       .single();
 
     if (!fetchedCategory || catError)
@@ -186,7 +187,7 @@ export async function GetAllBooksInCategory(req: AuthRequest, res: Response) {
     const { data: books, error: fetchError } = await supabase
       .from("books")
       .select("*")
-      .eq("category_id", categoryId);
+      .eq("category_id", categoryId as string);
 
     if (fetchError) {
       logger.error(`[fetch books error]: ${fetchError.message}`);
@@ -212,7 +213,7 @@ export async function GetFileUrl(req: AuthRequest, res: Response) {
     const { data: book, error: fetchError } = await supabase
       .from("books")
       .select("storage_path")
-      .eq("id", bookId)
+      .eq("id", bookId as string)
       .single();
 
     if (!book || fetchError) {
@@ -241,7 +242,7 @@ export async function GetFileUrl(req: AuthRequest, res: Response) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("GetFileUrl: unexpected error", {
       filePath: req.body?.filePath,
-      error: err instanceof Error ? err.message : err,
+      error: message,
     });
     return res.status(500).json({ error: "Internal server error" });
   }
@@ -265,7 +266,7 @@ export async function DeleteCategory(req: AuthRequest, res: Response) {
     const { data: fetchedCategory, error: catError } = await supabase
       .from("categories")
       .select("id")
-      .eq("id", categoryId)
+      .eq("id", categoryId as string)
       .single();
 
     if (!fetchedCategory || catError)
@@ -276,7 +277,7 @@ export async function DeleteCategory(req: AuthRequest, res: Response) {
     const { error } = await supabase
       .from("categories")
       .delete()
-      .eq("id", categoryId);
+      .eq("id", categoryId as string);
 
     if (error) {
       // FK violation: books still reference this category
@@ -320,7 +321,7 @@ export async function DeleteBook(req: AuthRequest, res: Response) {
     const { data: book, error: fetchError } = await supabase
       .from("books")
       .select("id, storage_path")
-      .eq("id", bookId)
+      .eq("id", bookId as string)
       .single();
 
     if (!book || fetchError)
@@ -345,7 +346,7 @@ export async function DeleteBook(req: AuthRequest, res: Response) {
     const { error: deleteError } = await supabase
       .from("books")
       .delete()
-      .eq("id", bookId);
+      .eq("id", bookId as string);
 
     if (deleteError) {
       // File is already gone from storage but the row remains — flag loudly, this is an inconsistent state
@@ -406,8 +407,8 @@ export async function UpdateBookInfo(req: AuthRequest, res: Response) {
         .status(400)
         .json({ success: false, message: "الوصف غير صحيح" });
     }
-
-    const updatePayload: Record<string, any> = {};
+    type BookUpdate = Database["public"]["Tables"]["books"]["Update"]
+    const updatePayload: BookUpdate = {};
     if (title !== undefined) updatePayload.title = title.trim();
     if (description !== undefined) updatePayload.description = description;
 
@@ -435,7 +436,7 @@ export async function UpdateBookInfo(req: AuthRequest, res: Response) {
     const { data: updatedBook, error } = await supabase
       .from("books")
       .update(updatePayload)
-      .eq("id", bookId)
+      .eq("id", bookId as string)
       .select()
       .single();
 

@@ -1,6 +1,7 @@
 import type { Request } from "express";
 
-interface IAuthRequest extends Request {
+export interface IAuthRequest<P=Record<string,string> , ResBody=any , ReqBody=any,ReqQuery=any> extends Request<P,ResBody,ReqBody,ReqQuery> {
+
   token?: {
     is_admin?: boolean;
     lawyer_token?: string;

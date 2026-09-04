@@ -10,7 +10,6 @@ const router = express.Router();
 
 router.get("/admin", verifyToken, LawyerController.getAllLawyersAdmin);
 router.get("/", LawyerController.getAllLawyersPublic);
-router.get("/:token", LawyerController.getLawyerByToken);
 router.get("/id/:id", LawyerController.getLawyerById);
 
 router.post("/", verifyToken, AdminOnly, LawyerController.createLawyer);
@@ -20,15 +19,9 @@ router.put("/:id", verifyToken, LawyerController.updateLawyer);
 router.delete("/:id", verifyToken, AdminOnly, LawyerController.deleteLawyer);
 
 router.post(
-  "/:id/update-profile-password",
+  "/:id/update-password",
   verifyToken,
-  LawyerController.updateProfilePassword,
-);
-
-router.post(
-  "/:id/update-portal-password",
-  verifyToken,
-  LawyerController.updatePortalPassword,
+  LawyerController.updatePassword,
 );
 
 router.post(

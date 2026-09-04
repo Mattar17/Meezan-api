@@ -38,7 +38,7 @@ export default async function ActivateLicense(req: Request, res: Response) {
       return res.status(404).json("License doesn't exist");
     }
 
-    if (license.used_devices.length >= license.max_devices)
+    if (license.used_devices.length >= license.max_devices!)
       return res
         .status(403)
         .json({ success: false, message: "Devices limit reached" });
@@ -48,8 +48,8 @@ export default async function ActivateLicense(req: Request, res: Response) {
       .insert({
         license_id: license.id,
         machine_id: machineId,
-        activated_at: new Date(),
-        last_seen_at: new Date(),
+        activated_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
       });
     if (insertError)
       throw new Error(`Inserting Error:: ${insertError.message}`);
@@ -73,10 +73,10 @@ export default async function ActivateLicense(req: Request, res: Response) {
       success: true,
       data: signedLicense,
     });
-  } catch (err) {
+  } catch (err:any) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("ActivateLicense error", {
-      message: err.message,
+      message: message,
       stack: err.stack,
     });
 

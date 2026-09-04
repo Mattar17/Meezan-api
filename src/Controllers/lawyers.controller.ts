@@ -1,6 +1,5 @@
 import { type Request, type Response } from "express";
 import supabase from "../Services/supabaseClient.js";
-import { generateLawyerId } from "../utils/generateLawyerId.js";
 import bcrypt from "bcrypt";
 import logger from "../utils/logger.js";
 import type { AuthRequest } from "../types/AuthRequest.js";
@@ -54,7 +53,7 @@ export const getLawyerById = async (req: Request, res: Response) => {
 export const getAllLawyersAdmin = async (req: AuthRequest, res: Response) => {
   try {
     logger.info("Fetching all lawyers", {
-      user: req.token?.lawyer_token,
+      user: req.token?.lawyer_id,
     });
 
     const { data, error } = await supabase.from("lawyers").select("*");
@@ -76,61 +75,25 @@ export const getAllLawyersAdmin = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+// 🔹 GET ALL LAWYERS (PUBLIC — excludes password_hash)
 export const getAllLawyersPublic = async (req: AuthRequest, res: Response) => {
   try {
-    logger.info("Fetching all lawyers", {
-      user: req.token?.lawyer_token,
-    });
-
-    const { data, error } = await supabase.from("lawyers").select("*");
-
-    if (error) throw error;
-
-    const LawyersDTO = data.map(({ token, ...rest }) => rest);
-
-    return res.status(200).json({
-      success: true,
-      count: data.length,
-      data: LawyersDTO,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.error("Error fetching lawyers", { message: message });
-
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
-  }
-};
-
-// 🔹 GET LAWYER BY TOKEN
-export const getLawyerByToken = async (req: AuthRequest, res: Response) => {
-  try {
-    const tokenParam = req.params.token;
+    logger.info("Fetching all lawyers (public)");
 
     const { data, error } = await supabase
       .from("lawyers")
-      .select("*")
-      .eq("token", tokenParam)
-      .single();
+      .select("id, name, email, bio, phone, picture_url, is_admin, created_at, updated_at");
 
-    if (error || !data) {
-      return res.status(404).json({
-        success: false,
-        message: "Lawyer not found",
-      });
-    }
+    if (error) throw error;
 
     return res.status(200).json({
       success: true,
+      count: data.length,
       data,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error("Error fetching lawyer by token", {
-      message: err.message,
-    });
+    logger.error("Error fetching lawyers", { message });
 
     return res.status(500).json({
       success: false,
@@ -149,22 +112,26 @@ export const createLawyer = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { name } = req.body;
+    const { name, email, password } = req.body;
 
-    const token = await generateLawyerId();
-    if (!token) throw new Error("Token generation failed");
+    if (!name || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "الاسم والبريد الإلكتروني مطلوبان",
+      });
+    }
 
-    const hashedProfilePassword = await bcrypt.hash("000000", 10);
-    const hashedPortalPassword = await bcrypt.hash("000000", 10);
+    // Use provided password or default "000000"
+    const rawPassword = password || "000000";
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
     const { data, error } = await supabase
       .from("lawyers")
       .insert([
         {
           name,
-          token,
-          profile_password: hashedProfilePassword,
-          portal_password: hashedPortalPassword,
+          email,
+          password_hash: hashedPassword,
         },
       ])
       .select()
@@ -173,7 +140,7 @@ export const createLawyer = async (req: AuthRequest, res: Response) => {
     if (error) throw error;
 
     logger.info("Lawyer created", {
-      token: token.slice(0, 5) + "***",
+      lawyerId: data.id,
     });
 
     return res.status(201).json({
@@ -182,11 +149,11 @@ export const createLawyer = async (req: AuthRequest, res: Response) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error("Error creating lawyer", { message: message });
+    logger.error("Error creating lawyer", { message });
 
     return res.status(400).json({
       success: false,
-      message: err.message,
+      message,
     });
   }
 };
@@ -204,7 +171,7 @@ export const updateLawyer = async (req: AuthRequest, res: Response) => {
     }
     if (req.token?.lawyer_id !== lawyer.id) {
       logger.warn("Unauthorized update attempt", {
-        user: req.token?.lawyer_token,
+        user: req.token?.lawyer_id,
       });
 
       return res.status(403).json({
@@ -215,7 +182,7 @@ export const updateLawyer = async (req: AuthRequest, res: Response) => {
     const { data, error } = await supabase
       .from("lawyers")
       .update(req.body)
-      .eq("id", req.params.id)
+      .eq("id", req.params.id as string)
       .select("*")
       .single();
 
@@ -231,7 +198,7 @@ export const updateLawyer = async (req: AuthRequest, res: Response) => {
 
     return res.status(400).json({
       success: false,
-      message: err.message,
+      message: message,
     });
   }
 };
@@ -249,7 +216,7 @@ export const deleteLawyer = async (req: AuthRequest, res: Response) => {
     const { error } = await supabase
       .from("lawyers")
       .delete()
-      .eq("id", req.params.id);
+      .eq("id", req.params.id as string);
 
     if (error) throw error;
 
@@ -268,8 +235,8 @@ export const deleteLawyer = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// 🔹 UPDATE PROFILE PASSWORD
-export const updateProfilePassword = async (
+// 🔹 UPDATE PASSWORD
+export const updatePassword = async (
   req: AuthRequest,
   res: Response,
 ) => {
@@ -285,7 +252,7 @@ export const updateProfilePassword = async (
       });
     }
 
-    if (req.token?.lawyer_token !== lawyer.token) {
+    if (req.token?.lawyer_id !== lawyer.id) {
       return res.status(403).json({
         success: false,
         message: "Access denied",
@@ -293,7 +260,7 @@ export const updateProfilePassword = async (
     }
     const isMatch = await bcrypt.compare(
       currentPassword,
-      lawyer.profile_password,
+      lawyer.password_hash,
     );
 
     if (!isMatch) {
@@ -307,8 +274,8 @@ export const updateProfilePassword = async (
 
     const { error } = await supabase
       .from("lawyers")
-      .update({ profile_password: hashed })
-      .eq("id", req.params.id);
+      .update({ password_hash: hashed })
+      .eq("id", req.params.id as string);
 
     if (error) throw error;
 
@@ -319,71 +286,12 @@ export const updateProfilePassword = async (
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("حدث خطأ!! حاول مرةً أخرى", {
-      message: err.message,
+      message: message,
     });
 
     return res.status(400).json({
       success: false,
-      message: err.message,
-    });
-  }
-};
-
-// 🔹 UPDATE PORTAL PASSWORD
-export const updatePortalPassword = async (req: AuthRequest, res: Response) => {
-  try {
-    const { profilePassword, newPortalPassword } = req.body;
-
-    const lawyer = await getLawyerByIdHelper(req.params.id as string);
-
-    if (!lawyer) {
-      return res.status(404).json({
-        success: false,
-        message: "Lawyer not found",
-      });
-    }
-
-    if (req.token?.lawyer_token !== lawyer.token) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied",
-      });
-    }
-
-    const isMatch = await bcrypt.compare(
-      profilePassword,
-      lawyer.profile_password,
-    );
-
-    if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        message: "كلمة المرور الخاصة غير صحيحة",
-      });
-    }
-
-    const hashed = await bcrypt.hash(newPortalPassword, 10);
-
-    const { error } = await supabase
-      .from("lawyers")
-      .update({ portal_password: hashed })
-      .eq("id", req.params.id);
-
-    if (error) throw error;
-
-    return res.status(200).json({
-      success: true,
-      message: "تم تغيير كلمة مرور بوابتك بنجاج",
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.error("Error updating portal password", {
-      message: err.message,
-    });
-
-    return res.status(400).json({
-      success: false,
-      message: err.message,
+      message: message,
     });
   }
 };
@@ -422,7 +330,7 @@ export const setProfilePicture = async (req: Request, res: Response) => {
     const { error: updateError } = await supabase
       .from("lawyers")
       .update({ picture_url: data.publicUrl })
-      .eq("id", id);
+      .eq("id", id as string);
 
     if (updateError) {
       logger.error(`Error while updating picture: ${updateError}`);
@@ -441,7 +349,7 @@ export const setProfilePicture = async (req: Request, res: Response) => {
     const message = err instanceof Error ? err.message : String(err);
     return res.status(500).json({
       success: false,
-      message: err instanceof Error ? err.message : "Unknown error",
+      message: message,
     });
   }
 };

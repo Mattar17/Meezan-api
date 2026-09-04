@@ -21,7 +21,7 @@ export async function createCase(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
-      .eq("id", officeId)
+      .eq("id", officeId as string)
       .single();
 
     if (officeError || !office)
@@ -90,7 +90,7 @@ export async function getOfficeCases(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
-      .eq("id", officeId)
+      .eq("id", officeId as string)
       .single();
 
     if (!office || officeError) {
@@ -103,7 +103,7 @@ export async function getOfficeCases(req: AuthRequest, res: Response) {
       const { data: membership, error: membershipError } = await supabase
         .from("office_members")
         .select("id")
-        .eq("office_id", officeId)
+        .eq("office_id", officeId as string)
         .eq("lawyer_id", lawyerId)
         .single();
 
@@ -119,7 +119,7 @@ export async function getOfficeCases(req: AuthRequest, res: Response) {
       const { data, error } = await supabase
         .from("cases")
         .select("*")
-        .eq("office_id", officeId);
+        .eq("office_id", officeId as string);
 
       if (error)
         return res.status(500).json({
@@ -131,7 +131,7 @@ export async function getOfficeCases(req: AuthRequest, res: Response) {
       const { data, error } = await supabase
         .from("cases")
         .select("*")
-        .eq("office_id", officeId)
+        .eq("office_id", officeId as string)
         .eq("assigned_lawyer_id", lawyerId);
 
       if (error)
@@ -169,7 +169,7 @@ export async function assignLawyerToCase(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
-      .eq("id", officeId)
+      .eq("id", officeId as string)
       .single();
 
     if (!office || officeError) {
@@ -193,7 +193,7 @@ export async function assignLawyerToCase(req: AuthRequest, res: Response) {
       const { data: membership, error: membershipError } = await supabase
         .from("office_members")
         .select("id")
-        .eq("office_id", officeId)
+        .eq("office_id", officeId as string)
         .eq("lawyer_id", lawyerToAssign)
         .single();
 
@@ -207,8 +207,8 @@ export async function assignLawyerToCase(req: AuthRequest, res: Response) {
     const { data: updatedCase, error: updateError } = await supabase
       .from("cases")
       .update({ assigned_lawyer_id: lawyerToAssign })
-      .eq("id", caseId)
-      .eq("office_id", officeId)
+      .eq("id", caseId as string)
+      .eq("office_id", officeId as string)
       .select("id");
 
     if (updateError)
@@ -252,7 +252,7 @@ export async function getCaseDetails(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
-      .eq("id", officeId)
+      .eq("id", officeId as string)
       .single();
 
     if (!office || officeError) {
@@ -264,8 +264,8 @@ export async function getCaseDetails(req: AuthRequest, res: Response) {
     const { data: fetchedCase, error: fetchedCaseError } = await supabase
       .from("cases")
       .select("*")
-      .eq("office_id", officeId)
-      .eq("id", caseId)
+      .eq("office_id", officeId as string)
+      .eq("id", caseId as string)
       .single();
 
     if (!fetchedCase || fetchedCaseError)
@@ -307,7 +307,7 @@ export async function updateCase(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
-      .eq("id", officeId)
+      .eq("id", officeId as string)
       .single();
 
     if (!office || officeError) {
@@ -319,8 +319,8 @@ export async function updateCase(req: AuthRequest, res: Response) {
     const { data: fetchedCase, error: fetchedCaseError } = await supabase
       .from("cases")
       .select("id,assigned_lawyer_id")
-      .eq("office_id", officeId)
-      .eq("id", caseId)
+      .eq("office_id", officeId as string)
+      .eq("id", caseId as string )
       .single();
 
     if (!fetchedCase || fetchedCaseError)
@@ -393,7 +393,7 @@ export async function deleteCase(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
-      .eq("id", officeId)
+      .eq("id", officeId as string)
       .single();
 
     if (!office || officeError) {
@@ -410,8 +410,8 @@ export async function deleteCase(req: AuthRequest, res: Response) {
     const { data: deletedCase, error: deleteError } = await supabase
       .from("cases")
       .delete()
-      .eq("office_id", officeId)
-      .eq("id", caseId)
+      .eq("office_id", officeId as string)
+      .eq("id", caseId as string)
       .select("case_number")
       .single();
 

@@ -30,7 +30,7 @@ export default async function ValidateLicense(
     }
     const license = data[0];
     console.log(license.used_devices.length);
-    if (license.used_devices!.length >= license.max_devices) {
+    if (license.used_devices!.length >= license.max_devices!) {
       logger.warn(`Max devices limit reached for key: ${key}`);
       return res
         .status(403)

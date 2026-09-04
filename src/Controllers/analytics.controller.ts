@@ -40,7 +40,7 @@ async function handleDownloads(req: Request, res: Response) {
       const { data: updated, error: updateError } = await supabase
         .from("analytics")
         .update({
-          number_of_downloads: existing.number_of_downloads + 1,
+          number_of_downloads: existing.number_of_downloads?? 0 + 1,
         })
         .eq("key", "global")
         .select("number_of_downloads")
@@ -55,8 +55,8 @@ async function handleDownloads(req: Request, res: Response) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("Analytics error", {
-      message: err.message,
-      stack: err.stack,
+      message,
+      stack: err instanceof Error ? err.stack : undefined,
     });
 
     return res.status(500).json("server error");

@@ -2,10 +2,10 @@ import type { Request, Response } from "express";
 import crypto from "crypto";
 import logger from "../utils/logger.js";
 import supabase from "../Services/supabaseClient.js";
-import type { AuthRequest } from "../types/AuthRequest.js";
+import type { IAuthRequest } from "../types/AuthRequest.js";
 
 // POST /api/offices/:officeId/invites
-export async function CreateInvite(req: AuthRequest, res: Response) {
+export async function CreateInvite(req: IAuthRequest<{officeId:string}>, res: Response) {
   const { officeId } = req.params;
   const { email, role = "member" } = req.body;
   const inviterId = req.token?.lawyer_id;
@@ -89,12 +89,12 @@ export async function CreateInvite(req: AuthRequest, res: Response) {
     logger.error(`[Invite Create] : ${message}`);
     return res
       .status(500)
-      .json({ success: false, message: `Server Error ${err.message}` });
+      .json({ success: false, message: `Server Error ${message}` });
   }
 }
 
 // GET /api/offices/:officeId/invites  (owner view — pending invites for the office)
-export async function getOfficeInvites(req: AuthRequest, res: Response) {
+export async function getOfficeInvites(req: IAuthRequest, res: Response) {
   const { officeId } = req.params;
 
   try {
@@ -136,19 +136,19 @@ export async function getOfficeInvites(req: AuthRequest, res: Response) {
     logger.error(`[Invite Fetch] : ${message}`);
     return res
       .status(500)
-      .json({ success: false, message: `Server Error ${err.message}` });
+      .json({ success: false, message: `Server Error ${message}` });
   }
 }
 
 // GET /api/invites/me  (lawyer's own pending invites, matched by email)
-export async function getMyInvites(req: AuthRequest, res: Response) {
+export async function getMyInvites(req: IAuthRequest, res: Response) {
   const lawyerId = req.token?.lawyer_id;
 
   try {
     const { data: lawyer, error: lawyerError } = await supabase
       .from("lawyers")
       .select("email")
-      .eq("id", lawyerId)
+      .eq("id", lawyerId as string)
       .single();
 
     if (lawyerError || !lawyer) {
@@ -177,12 +177,12 @@ export async function getMyInvites(req: AuthRequest, res: Response) {
     logger.error(`[Invite Fetch Mine] : ${message}`);
     return res
       .status(500)
-      .json({ success: false, message: `Server Error ${err.message}` });
+      .json({ success: false, message: `Server Error ${message}` });
   }
 }
 
 // POST /api/invites/:inviteId/respond   body: { action: "accepted" | "declined" }
-export async function respondToInvite(req: AuthRequest, res: Response) {
+export async function respondToInvite(req: IAuthRequest, res: Response) {
   const { inviteId } = req.params;
   const { action } = req.body;
   const lawyerId = req.token?.lawyer_id;
@@ -220,7 +220,7 @@ export async function respondToInvite(req: AuthRequest, res: Response) {
     const { data: lawyer, error: lawyerError } = await supabase
       .from("lawyers")
       .select("id, email")
-      .eq("id", lawyerId)
+      .eq("id", lawyerId as string)
       .single();
 
     if (lawyerError || !lawyer || lawyer.email !== invite.email) {
@@ -270,12 +270,12 @@ export async function respondToInvite(req: AuthRequest, res: Response) {
     logger.error(`[Invite Respond] : ${message}`);
     return res
       .status(500)
-      .json({ success: false, message: `Server Error ${err.message}` });
+      .json({ success: false, message: `Server Error ${message}` });
   }
 }
 
 // DELETE /api/invites/:id  (owner cancels a pending invite)
-export async function cancelInvite(req: AuthRequest, res: Response) {
+export async function cancelInvite(req: IAuthRequest, res: Response) {
   const { id } = req.params;
 
   try {
@@ -318,6 +318,6 @@ export async function cancelInvite(req: AuthRequest, res: Response) {
     logger.error(`[Invite Cancel] : ${message}`);
     return res
       .status(500)
-      .json({ success: false, message: `Server Error ${err.message}` });
+      .json({ success: false, message: `Server Error ${message}` });
   }
 }

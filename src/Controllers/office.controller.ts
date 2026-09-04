@@ -43,7 +43,7 @@ export async function getMyOffices(req: AuthRequest, res: Response) {
     const { data, error } = await supabase
       .from("office_members")
       .select("*,offices(id,owner_id,name)")
-      .eq("lawyer_id", lawyer_id);
+      .eq("lawyer_id", lawyer_id as string);
     if (error) {
       logger.error(error.message);
       return res.json(error);
@@ -54,7 +54,7 @@ export async function getMyOffices(req: AuthRequest, res: Response) {
     logger.error(`[Offices fetch] : ${message}`);
     return res
       .status(500)
-      .json({ success: false, message: `Server Error ${err.message}` });
+      .json({ success: false, message: `Server Error ${message}` });
   }
 }
 
@@ -68,7 +68,7 @@ export const getOfficeById = async (req: Request, res: Response) => {
     const { data, error } = await supabase
       .from("offices")
       .select("id, owner_id, name, address, phone, description")
-      .eq("id", id)
+      .eq("id", id as string)
       .single();
 
     if (error) {
@@ -214,7 +214,7 @@ export async function leaveOffice(req: AuthRequest, res: Response) {
     .from("office_members")
     .delete()
     .eq("office_id", officeId)
-    .eq("lawyer_id", lawyerId);
+    .eq("lawyer_id", lawyerId as string);
 
   if (deleteErr) {
     return res

@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { Database } from "../types/database.js";
+import { Database } from "../types/database.types.js";
 import "dotenv/config";
 
 const supabase = createClient<Database>(
