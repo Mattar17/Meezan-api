@@ -1,16 +1,16 @@
 import { z } from "zod";
 
-export const TASK_STATUSES = ["لم تبدأ", "قيد التنفيذ", "مكتملة"] as const;
-export type TaskStatus = (typeof TASK_STATUSES)[number];
-
 export const createTaskSchema = z
   .object({
+    // Required fields per DB Insert
     title: z.string().min(1, "عنوان المهمة مطلوب"),
-    description: z.string().optional(),
+
+    // Optional fields per DB Insert
+    assigned_lawyer_id: z.string().uuid().optional().nullable(),
     case_id: z.string().uuid().optional().nullable(),
+    description: z.string().optional().nullable(),
     due_date: z.string().date().optional().nullable(),
-    status: z.enum(TASK_STATUSES).optional(),
-    notes: z.string().nullable().optional(),
+    notes: z.string().optional().nullable(),
   })
   .strict();
 
@@ -18,9 +18,7 @@ export const ownerUpdateTaskSchema = createTaskSchema.partial().strict();
 
 export const lawyerUpdateTaskSchema = z
   .object({
-    status: z.enum(TASK_STATUSES).optional(),
     notes: z.string().nullable().optional(),
     due_date: z.string().date().optional().nullable(),
   })
-  .partial()
   .strict();

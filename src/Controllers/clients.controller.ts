@@ -10,6 +10,8 @@ export const CreateClient = async (req: AuthRequest, res: Response) => {
     try {
         const officeId = req.params.officeId as string;
         const lawyerId = req.token?.lawyer_id
+        console.log(lawyerId)
+
 
         const { data: office, error: officeFetchError } = await supabase.from("offices").select("owner_id").eq("id", officeId).single();
 
@@ -90,7 +92,7 @@ export const GetClients = async (req: AuthRequest, res: Response) => {
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         logger.error(`[GetClients] server error ${message}`);
-        return res.status(500).json({ success: false, message: "حدث خطأ داخلي" });
+        return res.status(500).json({ success: false, message: "خطأ في الخادم" });
     }
 }
 
@@ -140,7 +142,7 @@ export const GetClientById = async (req: AuthRequest, res: Response) => {
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         logger.error(`[GetClientById] server error ${message}`);
-        return res.status(500).json({ success: false, message: "حدث خطأ داخلي" });
+        return res.status(500).json({ success: false, message: "خطأ في الخادم" });
     }
 }
 
@@ -198,7 +200,7 @@ export const UpdateClient = async (req: AuthRequest, res: Response) => {
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         logger.error(`[UpdateClient] server error ${message}`);
-        return res.status(500).json({ success: false, message: "حدث خطأ داخلي" });
+        return res.status(500).json({ success: false, message: "خطأ في الخادم" });
     }
 }
 
@@ -249,6 +251,6 @@ export const DeleteClient = async (req: AuthRequest, res: Response) => {
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         logger.error(`[DeleteClient] server error ${message}`);
-        return res.status(500).json({ success: false, message: "حدث خطأ داخلي" });
+        return res.status(500).json({ success: false, message: "خطأ في الخادم" });
     }
 }

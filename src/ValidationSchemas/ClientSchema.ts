@@ -1,5 +1,5 @@
 import {z} from "zod";
-import { Database } from "../types/database.js";
+import { Database } from "../types/database.types.js";
 
 // Extract DB enum types for type safety
 type ClientStatus = Database["public"]["Enums"]["client_status"];

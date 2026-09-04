@@ -1,10 +1,8 @@
 import { z } from "zod";
-import { CASE_STATUSES } from "../Models/Case.js";
 import { createCaseSchema } from "./CaseSchema.js";
 
 export const lawyerUpdateSchema = z
   .object({
-    case_status: z.enum(CASE_STATUSES).optional(),
     latest_court_session_date: z
       .string()
       .optional()
@@ -18,15 +16,12 @@ export const lawyerUpdateSchema = z
       z.string().nullable(),
     ),
     latest_update: z.string().nullable().optional(),
-    court_name: z.string().optional(),
-    court_circuit: z.string().optional(),
+    court_name: z.string().nullable().optional(),
+    court_circuit: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
   })
   .strict();
 
 export const ownerUpdateSchema = createCaseSchema
   .partial()
-  .extend({
-    case_status: z.enum(CASE_STATUSES).optional(),
-    latest_update: z.string().optional(),
-  })
   .strict();
