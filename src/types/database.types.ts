@@ -361,7 +361,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
-          is_admin: boolean | null
+          is_admin: boolean
           name: string
           password_hash: string
           phone: string | null
@@ -373,7 +373,7 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
-          is_admin?: boolean | null
+          is_admin?: boolean
           name: string
           password_hash: string
           phone?: string | null
@@ -385,7 +385,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
-          is_admin?: boolean | null
+          is_admin?: boolean
           name?: string
           password_hash?: string
           phone?: string | null
@@ -620,6 +620,41 @@ export type Database = {
             columns: ["license_id"]
             isOneToOne: false
             referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_refresh_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          is_valid: boolean
+          token_hash: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          is_valid?: boolean
+          token_hash: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          is_valid?: boolean
+          token_hash?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_refresh_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "lawyers"
             referencedColumns: ["id"]
           },
         ]

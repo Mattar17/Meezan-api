@@ -8,11 +8,13 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "types":"npx supabase gen types typescript --project-id yhagsaelhnkytgxbaibi --schema public > src/types/database.types.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.102.0",
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "crypto": "^1.0.1",
     "dotenv": "^17.2.3",
@@ -30,6 +32,7 @@
   "devDependencies": {
     "@jest/globals": "^30.4.1",
     "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",

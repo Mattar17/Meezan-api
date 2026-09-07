@@ -3,10 +3,18 @@ import bcrypt from "bcrypt";
 import generateToken from "../Services/generateToken.js";
 import logger from "../utils/logger.js";
 import supabase from "../Services/supabaseClient.js";
+import crypto from "node:crypto"
 
 export const Login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+  return res.status(400).json({
+    success: false,
+    message: "البريد الإلكتروني وكلمة المرور مطلوبان",
+  });
+}
 
     const { data: lawyer, error } = await supabase
       .from("lawyers")
@@ -29,11 +37,23 @@ export const Login = async (req: Request, res: Response) => {
       });
     }
 
-    const generatedToken = await generateToken({
+    const {accessToken,refreshToken} = generateToken({
       lawyer_email: email,
       lawyer_id: lawyer.id,
-      is_admin: lawyer.is_admin,
+      is_admin: lawyer.is_admin ?? false,
     });
+
+    const tokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+    const {data:storedToken,error:insertTokenError} = await supabase
+    .from("user_refresh_tokens")
+    .insert({
+      user_id:lawyer.id,
+      token_hash:tokenHash,
+      expires_at:new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      is_valid:true
+    })
+
+    if(insertTokenError) throw Error("Error while generating tokens")
 
     const lawyerInfo = {
       id: lawyer.id,
@@ -44,15 +64,23 @@ export const Login = async (req: Request, res: Response) => {
       isAdmin: lawyer.is_admin,
     };
 
+    res.cookie("refreshToken",refreshToken,{
+      httpOnly:true,
+      maxAge : 30*24*60*60*1000,
+      path:"/api/refresh",
+      sameSite:"strict",
+      secure:process.env.NODE_ENV === "production"
+    })
+
     return res.status(200).json({
       success: true,
-      data: { token: generatedToken, user: lawyerInfo },
+      data: { accessToken, user: lawyerInfo },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error(`Login error: ${err}`);
+    logger.error(`Login error: ${message}`);
     return res
       .status(500)
-      .json({ success: false, message: `${err} server error` });
+      .json({ success: false, message: `server error` });
   }
 };

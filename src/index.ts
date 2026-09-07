@@ -7,6 +7,7 @@ import routes from "./routes/index.js";
 import cors from "cors";
 import "dotenv/config";
 import { handlePaymentWebhook } from "./Controllers/Payment.controller.js";
+import cookieParser from "cookie-parser"
 
 app.use(
   cors({
@@ -17,6 +18,7 @@ app.use(
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser())
 
 app.get("/", async (req: Request, res: Response) => {
   res.json("Welcome to the License Management API 💙");
