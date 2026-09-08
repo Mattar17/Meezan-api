@@ -68,7 +68,7 @@ export async function RefreshToken(req:IAuthRequest,res:Response){
         res.cookie("refreshToken",newRefreshToken,{
             httpOnly:true,
             maxAge : REFRESH_TOKEN_TTL_MS,
-            path:"/api/refresh",
+            path:"/api/auth",
             sameSite:"strict",
             secure:process.env.NODE_ENV === "production"
         })
