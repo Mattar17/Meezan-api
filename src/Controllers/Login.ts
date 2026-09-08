@@ -5,7 +5,10 @@ import logger from "../utils/logger.js";
 import supabase from "../Services/supabaseClient.js";
 import crypto from "node:crypto"
 
+
+const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const Login = async (req: Request, res: Response) => {
+  const isMobile = req.headers["x-client-type"] === "mobile";
   try {
     const { email, password } = req.body;
 
@@ -64,18 +67,27 @@ export const Login = async (req: Request, res: Response) => {
       isAdmin: lawyer.is_admin,
     };
 
-    res.cookie("refreshToken",refreshToken,{
-      httpOnly:true,
-      maxAge : 30*24*60*60*1000,
-      path:"/api/refresh",
-      sameSite:"strict",
-      secure:process.env.NODE_ENV === "production"
-    })
+    if(isMobile){
+        return res.status(200).json({success:true,data:{
+            accessToken,refreshToken
+        }})
+    }
+    else{
 
-    return res.status(200).json({
-      success: true,
-      data: { accessToken, user: lawyerInfo },
-    });
+        res.cookie("refreshToken",refreshToken,{
+            httpOnly:true,
+            maxAge : REFRESH_TOKEN_TTL_MS,
+            path:"/api/refresh",
+            sameSite:"strict",
+            secure:process.env.NODE_ENV === "production"
+        })
+        
+        return res.status(200).json({
+            success: true,
+            data: { accessToken},
+        }    
+    );
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`Login error: ${message}`);

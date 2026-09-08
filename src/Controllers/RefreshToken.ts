@@ -9,6 +9,7 @@ import generateToken from "../Services/generateToken.js";
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 //POST /api/refresh
 export async function RefreshToken(req:IAuthRequest,res:Response){
+    const isMobile = req.headers["x-client-type"] === "mobile";
     try{
         const {refreshToken} = req.cookies;
         if(!refreshToken){
@@ -57,19 +58,28 @@ export async function RefreshToken(req:IAuthRequest,res:Response){
         
         await supabase.from("user_refresh_tokens").delete().eq("id",tokenRecord.id);
 
-        res.cookie("refreshToken",newRefreshToken,{
-      httpOnly:true,
-      maxAge : REFRESH_TOKEN_TTL_MS,
-      path:"/api/refresh",
-      sameSite:"strict",
-      secure:process.env.NODE_ENV === "production"
-    })
+    if(isMobile){
+        return res.status(200).json({success:true,data:{
+            accessToken,newRefreshToken
+        }})
+    }
+    else{
 
-    return res.status(200).json({
-      success: true,
-      data: { accessToken},
-    });
-    }catch(err){
+        res.cookie("refreshToken",newRefreshToken,{
+            httpOnly:true,
+            maxAge : REFRESH_TOKEN_TTL_MS,
+            path:"/api/refresh",
+            sameSite:"strict",
+            secure:process.env.NODE_ENV === "production"
+        })
+        
+        return res.status(200).json({
+            success: true,
+            data: { accessToken},
+        }    
+    );
+    }
+}catch(err){
         const message = err instanceof Error ? err.message : String(err);
         logger.error(`[RefreshToken Error] ${message}`)
         return res.status(500).json({success:false,message})
