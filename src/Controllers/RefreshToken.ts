@@ -7,7 +7,7 @@ import supabase from "../Services/supabaseClient.js";
 import generateToken from "../Services/generateToken.js";
 
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-//POST /api/refresh
+//POST /api/auth/refresh
 export async function RefreshToken(req:IAuthRequest,res:Response){
     const isMobile = req.headers["x-client-type"] === "mobile";
     try{
