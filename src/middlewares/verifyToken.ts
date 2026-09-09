@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import jwt, { TokenExpiredError } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 // Extend Request interface to include decoded payload
 export interface AuthenticatedRequest extends Request {
@@ -27,9 +27,8 @@ export default function verifyToken(
     const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET as string);
     req.user = decoded;
     return next();
-  } catch (error) {
-    // Crucial for the client to initiate the refresh token endpoint
-    if (error instanceof TokenExpiredError) {
+  } catch (error:any) {
+    if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         success: false,
         code: "TOKEN_EXPIRED",
