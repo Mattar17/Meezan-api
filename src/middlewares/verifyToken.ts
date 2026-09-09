@@ -1,18 +1,46 @@
-import jwt from "jsonwebtoken";
-export default function verifyToken(req: any, res: any, next: any) {
-  const authHeader =
-    req.headers["authorization"] || req.headers["Authorization"];
-  if (!authHeader) {
-    return res
-      .status(401)
-      .json({ success: false, message: "No token provided" });
+import { Request, Response, NextFunction } from "express";
+import jwt, { TokenExpiredError } from "jsonwebtoken";
+
+// Extend Request interface to include decoded payload
+export interface AuthenticatedRequest extends Request {
+  user?: string | jwt.JwtPayload;
+}
+
+export default function verifyToken(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  const authHeader = req.headers["authorization"] || req.headers["Authorization"];
+
+  if (!authHeader || typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({
+      success: false,
+      code: "NO_TOKEN",
+      message: "Access token missing or malformed",
+    });
   }
+
   const token = authHeader.split(" ")[1];
-  if (!token) {
-    return res
-      .status(401)
-      .json({ success: false, message: "No token provided" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET as string);
+    req.user = decoded;
+    return next();
+  } catch (error) {
+    // Crucial for the client to initiate the refresh token endpoint
+    if (error instanceof TokenExpiredError) {
+      return res.status(401).json({
+        success: false,
+        code: "TOKEN_EXPIRED",
+        message: "Access token has expired",
+      });
+    }
+
+    return res.status(403).json({
+      success: false,
+      code: "INVALID_TOKEN",
+      message: "Token is invalid or corrupted",
+    });
   }
-  req.token = jwt.verify(token, process.env.JWT_ACCESS_SECRET as string);
-  next();
 }
