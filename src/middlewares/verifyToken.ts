@@ -13,6 +13,6 @@ export default function verifyToken(req: any, res: any, next: any) {
       .status(401)
       .json({ success: false, message: "No token provided" });
   }
-  req.token = jwt.verify(token, process.env.JWT_SECRET as string);
+  req.token = jwt.verify(token, process.env.JWT_ACCESS_SECRET as string);
   next();
 }
