@@ -3,6 +3,4 @@
 /dist
 config.bat
 /coverage
-.env.* 
-.env
 supabase/.temp
