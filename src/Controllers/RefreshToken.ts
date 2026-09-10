@@ -19,7 +19,7 @@ export async function RefreshToken(req: IAuthRequest, res: Response) {
         message: "Refresh token is required" 
       });
     }
-
+    console.log("Incoming Refresh Token",refreshToken);
     const tokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
     console.log("[Token Hash]",tokenHash)
     // 2. Fetch token and associated lawyer
@@ -89,7 +89,7 @@ export async function RefreshToken(req: IAuthRequest, res: Response) {
         success: true,
         data: {
           accessToken,
-          refreshToken: newRefreshToken,
+          newRefreshToken,
         },
       });
     }
