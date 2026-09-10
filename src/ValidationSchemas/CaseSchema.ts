@@ -17,19 +17,17 @@ const clientTypeValues: [ClientTypeEnum, ...ClientTypeEnum[]] = [
 
 export const createCaseSchema = z
   .object({
-    // Required fields per DB Insert
-    title: z.string().min(1, "عنوان القضية مطلوب"),
     case_number: z.string().min(1, "رقم القضية مطلوب"),
     case_year: z.string().regex(/^\d{4}$/, "السنة غير صحيحة"),
     client_name: z.string().min(1, "اسم الموكل مطلوب"),
-    client_national_id: z.string().regex(/^\d{14}$/, "الرقم القومي غير صحيح"),
     client_opponent_name: z.string().min(1, "اسم الخصم مطلوب"),
-    client_opponent_national_id: z
-      .string()
-      .regex(/^\d{14}$/, "الرقم القومي غير صحيح"),
     client_role: z.string().min(1, "صفة الموكل مطلوبة"),
 
     // Optional fields per DB Insert
+      client_national_id: z.string().regex(/^\d{14}$/, "الرقم القومي غير صحيح").optional(),
+      client_opponent_national_id: z
+      .string()
+      .regex(/^\d{14}$/, "الرقم القومي غير صحيح").optional(),
     assigned_lawyer_id: z.string().uuid().optional().nullable(),
     case_degree: z.string().optional().nullable(),
     case_type: z.string().optional().nullable(),

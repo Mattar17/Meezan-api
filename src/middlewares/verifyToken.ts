@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 
 // Extend Request interface to include decoded payload
 export interface AuthenticatedRequest extends Request {
-  user?: string | jwt.JwtPayload;
+  token?: string | jwt.JwtPayload;
 }
 
 export default function verifyToken(
@@ -25,7 +25,7 @@ export default function verifyToken(
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET as string);
-    req.user = decoded;
+    req.token = decoded;
     return next();
   } catch (error:any) {
     if (error.name === "TokenExpiredError") {

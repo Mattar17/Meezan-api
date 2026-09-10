@@ -39,6 +39,7 @@ export async function CreateOffice(req: Request, res: Response) {
 
 export async function getMyOffices(req: AuthRequest, res: Response) {
   try {
+    logger.info(`[token] ${req.token}`)
     const lawyer_id = req.token?.lawyer_id;
     const { data, error } = await supabase
       .from("office_members")
