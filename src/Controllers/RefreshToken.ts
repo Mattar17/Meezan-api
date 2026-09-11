@@ -11,7 +11,9 @@ export async function RefreshToken(req: IAuthRequest, res: Response) {
   const isMobile = req.headers["x-client-type"] === "mobile";
 
   try {
-    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    const refreshToken = isMobile 
+      ? req.body?.refreshToken 
+      : (req.cookies?.refreshToken || req.body?.refreshToken);
 
     if (!refreshToken) {
       return res.status(401).json({ 
