@@ -1,4 +1,6 @@
 import type { Request, Response } from "express";
+import fs from "fs";
+import path from "path";
 import { randomUUID } from "crypto";
 import logger from "../utils/logger.js"
 import { AuthRequest } from "../types/AuthRequest.js";
@@ -254,3 +256,183 @@ export const DeleteClient = async (req: AuthRequest, res: Response) => {
         return res.status(500).json({ success: false, message: "خطأ في الخادم" });
     }
 }
+
+// POST /api/offices/:officeId/clients/:clientId/documents
+// POST /api/clients/:clientId/documents
+// POST /api/clients/upload-documents
+export const UploadDocuments = async (req: AuthRequest, res: Response) => {
+    const filesToCleanup: string[] = [];
+
+    try {
+        const lawyerId = req.token?.lawyer_id
+        if (!lawyerId) {
+            return res.status(401).json({
+                success: false,
+                message: "غير مصرح، لا يوجد معرف للمحامي",
+            });
+        }
+
+        const clientId = req.params.clientId as string
+
+        if (!clientId) {
+            return res.status(400).json({
+                success: false,
+                message: "معرّف الموكل مطلوب",
+            });
+        }
+
+        // Check client existence
+        const { data: client, error: clientFetchError } = await supabase
+            .from("clients")
+            .select("id, office_id")
+            .eq("id", clientId)
+            .single();
+
+        if (clientFetchError) {
+            if (clientFetchError.code === "PGRST116") {
+                return res.status(404).json({
+                    success: false,
+                    message: "الموكل غير موجود",
+                });
+            }
+            logger.error(`[UploadDocuments] Client fetch error: ${clientFetchError.message}`);
+            return res.status(500).json({
+                success: false,
+                message: "حدث خطأ أثناء التحقق من بيانات الموكل",
+            });
+        }
+
+        // If client belongs to an office, verify lawyer has access
+        if (client.office_id) {
+            const { data: office, error: officeError } = await supabase
+                .from("offices")
+                .select("owner_id")
+                .eq("id", client.office_id)
+                .single();
+
+            if (!officeError && office && office.owner_id !== lawyerId && !req.token?.is_admin) {
+                return res.status(403).json({
+                    success: false,
+                    message: "لا يمكنك رفع مستندات لهذا الموكل",
+                });
+            }
+        }
+        console.log(req.files);
+        // Extract files from req.files or req.file
+        const allFiles: Express.Multer.File[] = Array.isArray(req.files)
+            ? req.files 
+            : req.files && typeof req.files === "object"
+            ? Object.values(req.files).flat()
+            : req.file
+            ? [req.file]
+            : [];
+
+        for (const f of allFiles) {
+            if (f.path) {
+                filesToCleanup.push(f.path);
+            }
+        }
+
+        let nationalIdFile: Express.Multer.File | undefined;
+        let passportFile: Express.Multer.File | undefined;
+
+        for (const file of allFiles) {
+            const field = file.fieldname.toLowerCase();
+            if (field.includes("passport")) {
+                passportFile = file;
+            } else if (field.includes("national_id")) {
+                nationalIdFile = file;
+            }
+        }
+
+        if (!nationalIdFile && !passportFile) {
+            return res.status(400).json({
+                success: false,
+                message: "يجب إرفاق صورة بطاقة الرقم القومي أو صورة جواز السفر أو كلاهما",
+            });
+        }
+
+        const uploadFileToSupabase = async (
+            file: Express.Multer.File,
+            docType: "national_id" | "passport"
+        ) => {
+            const ext = path.extname(file.originalname) || ".jpg";
+            const fileName = `${docType}${ext}`;
+            const storagePath = `${lawyerId}/${clientId}/${fileName}`;
+
+            const fileBuffer = file.buffer || fs.readFileSync(file.path);
+
+            const { error: uploadError } = await supabase.storage
+                .from("client_documents")
+                .upload(storagePath, fileBuffer, {
+                    contentType: file.mimetype,
+                    upsert: true,
+                });
+
+            if (uploadError) {
+                logger.error(`[UploadDocuments] Supabase upload error: ${uploadError.message}`);
+                throw uploadError;
+            }
+
+            const { data: publicUrlData } = supabase.storage
+                .from("client_documents")
+                .getPublicUrl(storagePath);
+
+            return {
+                path: storagePath,
+                fullPath: `client_documents/${storagePath}`,
+                publicUrl: publicUrlData.publicUrl,
+                fileName,
+                mimetype: file.mimetype,
+                size: file.size,
+            };
+        };
+
+        const uploadedDocuments: {
+            national_id?: Awaited<ReturnType<typeof uploadFileToSupabase>>;
+            passport?: Awaited<ReturnType<typeof uploadFileToSupabase>>;
+        } = {};
+
+        if (nationalIdFile) {
+            uploadedDocuments.national_id = await uploadFileToSupabase(
+                nationalIdFile,
+                "national_id"
+            );
+        }
+
+        if (passportFile) {
+            uploadedDocuments.passport = await uploadFileToSupabase(
+                passportFile,
+                "passport"
+            );
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "تم رفع المستندات بنجاح",
+            data: {
+                lawyer_id: lawyerId,
+                client_id: clientId,
+                documents: uploadedDocuments,
+            },
+        });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`[UploadDocuments] server error: ${message}`);
+        return res.status(500).json({
+            success: false,
+            message: "حدث خطأ أثناء رفع المستندات",
+            error: message,
+        });
+    } finally {
+        for (const filePath of filesToCleanup) {
+            if (fs.existsSync(filePath)) {
+                try {
+                    fs.unlinkSync(filePath);
+                } catch (unlinkErr) {
+                    logger.error(`[UploadDocuments] Failed to delete temp file ${filePath}: ${unlinkErr}`);
+                }
+            }
+        }
+    }
+};

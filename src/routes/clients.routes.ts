@@ -1,6 +1,7 @@
 import express from "express";
 
 import verifyToken from "../middlewares/verifyToken.js";
+import { UploadFile } from "../Services/UploadFile.js";
 
 import * as ClientsController from "../Controllers/clients.controller.js";
 
@@ -34,6 +35,27 @@ router.delete(
   "/offices/:officeId/clients/:clientId",
   verifyToken,
   ClientsController.DeleteClient,
+);
+
+router.post(
+  "/offices/:officeId/clients/:clientId/documents",
+  verifyToken,
+  UploadFile.any(),
+  ClientsController.UploadDocuments,
+);
+
+router.post(
+  "/clients/:clientId/documents",
+  verifyToken,
+  UploadFile.any(),
+  ClientsController.UploadDocuments,
+);
+
+router.post(
+  "/clients/:clientId/upload-documents",
+  verifyToken,
+  UploadFile.any(),
+  ClientsController.UploadDocuments,
 );
 
 export default router;
