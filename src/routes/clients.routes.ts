@@ -58,5 +58,29 @@ router.post(
   ClientsController.UploadDocuments,
 );
 
+router.get(
+  "/offices/:officeId/clients/:clientId/documents",
+  verifyToken,
+  ClientsController.GetClientDocuments,
+);
+
+router.get(
+  "/clients/:clientId/documents",
+  verifyToken,
+  ClientsController.GetClientDocuments,
+);
+
+router.delete(
+  "/offices/:officeId/clients/:clientId/documents/:docType",
+  verifyToken,
+  ClientsController.DeleteClientDocument,
+);
+
+router.delete(
+  "/clients/:clientId/documents/:docType",
+  verifyToken,
+  ClientsController.DeleteClientDocument,
+);
+
 export default router;
 

@@ -407,6 +407,29 @@ export const UploadDocuments = async (req: AuthRequest, res: Response) => {
             );
         }
 
+        const updatePayload: { national_id_path?: string; passport_path?: string } = {};
+        if (uploadedDocuments.national_id?.path) {
+            updatePayload.national_id_path = uploadedDocuments.national_id.path;
+        }
+        if (uploadedDocuments.passport?.path) {
+            updatePayload.passport_path = uploadedDocuments.passport.path;
+        }
+
+        if (Object.keys(updatePayload).length > 0) {
+            const { error: clientUpdateError } = await supabase
+                .from("clients")
+                .update(updatePayload)
+                .eq("id", clientId);
+
+            if (clientUpdateError) {
+                logger.error(`[UploadDocuments] Failed to update client record: ${clientUpdateError.message}`);
+                return res.status(500).json({
+                    success: false,
+                    message: "حدث خطأ أثناء حفظ مسارات المستندات في بيانات الموكل",
+                });
+            }
+        }
+
         return res.status(200).json({
             success: true,
             message: "تم رفع المستندات بنجاح",
@@ -434,5 +457,218 @@ export const UploadDocuments = async (req: AuthRequest, res: Response) => {
                 }
             }
         }
+    }
+};
+
+// GET /api/offices/:officeId/clients/:clientId/documents
+// GET /api/clients/:clientId/documents
+export const GetClientDocuments = async (req: AuthRequest, res: Response) => {
+    try {
+        const lawyerId = req.token?.lawyer_id;
+        if (!lawyerId) {
+            return res.status(401).json({
+                success: false,
+                message: "غير مصرح، لا يوجد معرف للمحامي",
+            });
+        }
+
+        const clientId = req.params.clientId as string;
+        if (!clientId) {
+            return res.status(400).json({
+                success: false,
+                message: "معرّف الموكل مطلوب",
+            });
+        }
+
+        const { data: client, error: clientFetchError } = await supabase
+            .from("clients")
+            .select("id, office_id, national_id_path, passport_path")
+            .eq("id", clientId)
+            .single();
+
+        if (clientFetchError) {
+            if (clientFetchError.code === "PGRST116") {
+                return res.status(404).json({
+                    success: false,
+                    message: "الموكل غير موجود",
+                });
+            }
+            logger.error(`[GetClientDocuments] Client fetch error: ${clientFetchError.message}`);
+            return res.status(500).json({
+                success: false,
+                message: "حدث خطأ أثناء التحقق من بيانات الموكل",
+            });
+        }
+
+        if (client.office_id) {
+            const { data: office, error: officeError } = await supabase
+                .from("offices")
+                .select("owner_id")
+                .eq("id", client.office_id)
+                .single();
+
+            if (!officeError && office && office.owner_id !== lawyerId && !req.token?.is_admin) {
+                return res.status(403).json({
+                    success: false,
+                    message: "لا يمكنك الوصول لمستندات هذا الموكل",
+                });
+            }
+        }
+
+        const expiresIn = 60 * 60; // 1 hour
+
+        let nationalIdUrl: string | null = null;
+        if (client.national_id_path) {
+            const { data, error } = await supabase.storage
+                .from("client_documents")
+                .createSignedUrl(client.national_id_path, expiresIn);
+            if (!error && data) {
+                nationalIdUrl = data.signedUrl;
+            } else if (error) {
+                logger.warn(`[GetClientDocuments] Failed to create signed url for national_id: ${error.message}`);
+            }
+        }
+
+        let passportUrl: string | null = null;
+        if (client.passport_path) {
+            const { data, error } = await supabase.storage
+                .from("client_documents")
+                .createSignedUrl(client.passport_path, expiresIn);
+            if (!error && data) {
+                passportUrl = data.signedUrl;
+            } else if (error) {
+                logger.warn(`[GetClientDocuments] Failed to create signed url for passport: ${error.message}`);
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                client_id: clientId,
+                documents: {
+                    national_id: client.national_id_path ? {
+                        path: client.national_id_path,
+                        signedUrl: nationalIdUrl,
+                    } : null,
+                    passport: client.passport_path ? {
+                        path: client.passport_path,
+                        signedUrl: passportUrl,
+                    } : null,
+                },
+            },
+        });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`[GetClientDocuments] server error: ${message}`);
+        return res.status(500).json({
+            success: false,
+            message: "حدث خطأ أثناء جلب روابط مستندات الموكل",
+            error: message,
+        });
+    }
+};
+
+// DELETE /api/offices/:officeId/clients/:clientId/documents/:docType
+// DELETE /api/clients/:clientId/documents/:docType
+export const DeleteClientDocument = async (req: AuthRequest, res: Response) => {
+    try {
+        const lawyerId = req.token?.lawyer_id;
+        if (!lawyerId) {
+            return res.status(401).json({
+                success: false,
+                message: "غير مصرح، لا يوجد معرف للمحامي",
+            });
+        }
+
+        const clientId = req.params.clientId as string;
+        const docType = req.params.docType as "national_id" | "passport";
+
+        if (!clientId) {
+            return res.status(400).json({
+                success: false,
+                message: "معرّف الموكل مطلوب",
+            });
+        }
+
+        if (docType !== "national_id" && docType !== "passport") {
+            return res.status(400).json({
+                success: false,
+                message: "نوع المستند غير صالح. يجب أن يكون national_id أو passport",
+            });
+        }
+
+        const { data: client, error: clientFetchError } = await supabase
+            .from("clients")
+            .select("id, office_id, national_id_path, passport_path")
+            .eq("id", clientId)
+            .single();
+
+        if (clientFetchError || !client) {
+            return res.status(404).json({
+                success: false,
+                message: "الموكل غير موجود",
+            });
+        }
+
+        if (client.office_id) {
+            const { data: office, error: officeError } = await supabase
+                .from("offices")
+                .select("owner_id")
+                .eq("id", client.office_id)
+                .single();
+
+            if (!officeError && office && office.owner_id !== lawyerId && !req.token?.is_admin) {
+                return res.status(403).json({
+                    success: false,
+                    message: "لا يمكنك حذف مستندات هذا الموكل",
+                });
+            }
+        }
+
+        const targetPath = docType === "national_id" ? client.national_id_path : client.passport_path;
+
+        if (targetPath) {
+            const { error: storageError } = await supabase.storage
+                .from("client_documents")
+                .remove([targetPath]);
+
+            if (storageError) {
+                logger.warn(`[DeleteClientDocument] Storage removal warning: ${storageError.message}`);
+            }
+        }
+
+        const updatePayload = docType === "national_id" 
+            ? { national_id_path: null } 
+            : { passport_path: null };
+
+        const { error: updateError } = await supabase
+            .from("clients")
+            .update(updatePayload)
+            .eq("id", clientId);
+
+        if (updateError) {
+            logger.error(`[DeleteClientDocument] Update error: ${updateError.message}`);
+            return res.status(500).json({
+                success: false,
+                message: "حدث خطأ أثناء إزالة مسار المستند من بيانات الموكل",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "تم حذف المستند بنجاح",
+            data: {
+                client_id: clientId,
+                doc_type: docType,
+            },
+        });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`[DeleteClientDocument] server error: ${message}`);
+        return res.status(500).json({
+            success: false,
+            message: "حدث خطأ أثناء حذف المستند",
+            error: message,
+        });
     }
 };

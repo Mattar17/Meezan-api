@@ -130,9 +130,9 @@ export type Database = {
           case_type: string | null
           case_year: string
           client_name: string
-          client_national_id: string
+          client_national_id: string | null
           client_opponent_name: string
-          client_opponent_national_id: string
+          client_opponent_national_id: string | null
           client_role: string
           client_type: Database["public"]["Enums"]["client_type_enum"] | null
           closed_at: string | null
@@ -156,9 +156,9 @@ export type Database = {
           case_type?: string | null
           case_year: string
           client_name: string
-          client_national_id: string
+          client_national_id?: string | null
           client_opponent_name: string
-          client_opponent_national_id: string
+          client_opponent_national_id?: string | null
           client_role: string
           client_type?: Database["public"]["Enums"]["client_type_enum"] | null
           closed_at?: string | null
@@ -182,9 +182,9 @@ export type Database = {
           case_type?: string | null
           case_year?: string
           client_name?: string
-          client_national_id?: string
+          client_national_id?: string | null
           client_opponent_name?: string
-          client_opponent_national_id?: string
+          client_opponent_national_id?: string | null
           client_role?: string
           client_type?: Database["public"]["Enums"]["client_type_enum"] | null
           closed_at?: string | null
@@ -251,8 +251,10 @@ export type Database = {
           job: string | null
           name: string
           national_id: string | null
+          national_id_path: string | null
           notes: string | null
           office_id: string | null
+          passport_path: string | null
           phone_number: string | null
           updated_at: string | null
         }
@@ -270,8 +272,10 @@ export type Database = {
           job?: string | null
           name: string
           national_id?: string | null
+          national_id_path?: string | null
           notes?: string | null
           office_id?: string | null
+          passport_path?: string | null
           phone_number?: string | null
           updated_at?: string | null
         }
@@ -289,8 +293,10 @@ export type Database = {
           job?: string | null
           name?: string
           national_id?: string | null
+          national_id_path?: string | null
           notes?: string | null
           office_id?: string | null
+          passport_path?: string | null
           phone_number?: string | null
           updated_at?: string | null
         }
