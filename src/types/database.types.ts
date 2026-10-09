@@ -133,6 +133,7 @@ export type Database = {
           client_national_id: string | null
           client_opponent_name: string
           client_opponent_national_id: string | null
+          client_phone_number: string | null
           client_role: string
           client_type: string | null
           closed_at: string | null
@@ -144,8 +145,11 @@ export type Database = {
           latest_court_session_date: string | null
           latest_update: string | null
           next_court_session_date: string | null
+          notary_office: string | null
           office_id: string
           opened_at: string
+          opponent_phone_number: string | null
+          poa_number: string | null
           title: string
           updated_at: string
         }
@@ -159,6 +163,7 @@ export type Database = {
           client_national_id?: string | null
           client_opponent_name: string
           client_opponent_national_id?: string | null
+          client_phone_number?: string | null
           client_role: string
           client_type?: string | null
           closed_at?: string | null
@@ -170,8 +175,11 @@ export type Database = {
           latest_court_session_date?: string | null
           latest_update?: string | null
           next_court_session_date?: string | null
+          notary_office?: string | null
           office_id: string
           opened_at?: string
+          opponent_phone_number?: string | null
+          poa_number?: string | null
           title: string
           updated_at?: string
         }
@@ -185,6 +193,7 @@ export type Database = {
           client_national_id?: string | null
           client_opponent_name?: string
           client_opponent_national_id?: string | null
+          client_phone_number?: string | null
           client_role?: string
           client_type?: string | null
           closed_at?: string | null
@@ -196,8 +205,11 @@ export type Database = {
           latest_court_session_date?: string | null
           latest_update?: string | null
           next_court_session_date?: string | null
+          notary_office?: string | null
           office_id?: string
           opened_at?: string
+          opponent_phone_number?: string | null
+          poa_number?: string | null
           title?: string
           updated_at?: string
         }

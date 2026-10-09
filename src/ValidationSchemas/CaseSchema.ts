@@ -11,10 +11,22 @@ export const createCaseSchema = z
     client_role: z.string().min(1, "صفة الموكل مطلوبة"),
 
     // Optional fields per DB Insert
-      client_national_id: z.string().regex(/^\d{14}$/, "الرقم القومي غير صحيح").optional(),
-      client_opponent_national_id: z
+    client_national_id: z.string().regex(/^\d{14}$/, "الرقم القومي غير صحيح").optional().nullable(),
+    client_opponent_national_id: z
       .string()
-      .regex(/^\d{14}$/, "الرقم القومي غير صحيح").optional(),
+      .regex(/^\d{14}$/, "الرقم القومي غير صحيح").optional().nullable(),
+    client_phone_number: z
+      .string()
+      .regex(/^\d{11}$/, "رقم الهاتف غير صحيح")
+      .optional()
+      .nullable(),
+    opponent_phone_number: z
+      .string()
+      .regex(/^\d{11}$/, "رقم الهاتف غير صحيح")
+      .optional()
+      .nullable(),
+    poa_number: z.string().optional().nullable(),
+    notary_office: z.string().optional().nullable(),
     assigned_lawyer_id: z.string().uuid().optional().nullable(),
     case_degree: z.string().optional().nullable(),
     case_type: z.string().optional().nullable(),
