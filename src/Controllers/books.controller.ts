@@ -458,6 +458,7 @@ export async function UpdateBookInfo(req: AuthRequest, res: Response) {
     return res.status(200).json({
       success: true,
       message: "تم تحديث بيانات الكتاب",
+      data: updatedBook,
       book: updatedBook,
     });
   } catch (err) {

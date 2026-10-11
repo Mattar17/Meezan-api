@@ -373,6 +373,50 @@ export type Database = {
           },
         ]
       }
+      law_categories: {
+        Row: {
+          id: number
+          name: string
+        }
+        Insert: {
+          id?: number
+          name: string
+        }
+        Update: {
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      law_texts: {
+        Row: {
+          article_number: string
+          category_id: number
+          content: string
+          id: number
+        }
+        Insert: {
+          article_number: string
+          category_id: number
+          content: string
+          id?: number
+        }
+        Update: {
+          article_number?: string
+          category_id?: number
+          content?: string
+          id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "law_texts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "law_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lawyers: {
         Row: {
           bio: string | null

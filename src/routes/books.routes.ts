@@ -16,7 +16,7 @@ import { UploadFile } from "../Services/UploadFile.js";
 const router = express.Router();
 
 router.post("/books/category", verifyToken, adminOnly, CreateCategory);
-router.get("/books/category", verifyToken, adminOnly, GetAllCategories);
+router.get("/books/category", verifyToken, GetAllCategories);
 router.post(
   "/books/upload",
   verifyToken,
@@ -27,10 +27,9 @@ router.post(
 router.get(
   "/books/category/:categoryId",
   verifyToken,
-  adminOnly,
   GetAllBooksInCategory,
 );
-router.get("/books/:bookId", verifyToken, adminOnly, GetFileUrl);
+router.get("/books/:bookId", verifyToken, GetFileUrl);
 router.delete(
   "/books/category/:categoryId",
   verifyToken,
