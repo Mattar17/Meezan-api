@@ -4,4 +4,3 @@
 config.bat
 /coverage
 supabase/.temp
-.env
