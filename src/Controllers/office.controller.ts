@@ -31,31 +31,51 @@ export async function CreateOffice(req: Request, res: Response) {
       console.log(error?.message);
       return res.status(200).json({ success: true, data });
     }
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`[Office Create] : ${message}`);
+=======
+  } catch (err: any) {
+    logger.error(`[Office Create] : ${err.message}`);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   }
 }
 
 export async function getMyOffices(req: AuthRequest, res: Response) {
   try {
+<<<<<<< HEAD
     logger.info(`[token] ${req.token}`)
+=======
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     const lawyer_id = req.token?.lawyer_id;
     const { data, error } = await supabase
       .from("office_members")
       .select("*,offices(id,owner_id,name)")
+<<<<<<< HEAD
       .eq("lawyer_id", lawyer_id as string);
+=======
+      .eq("lawyer_id", lawyer_id);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     if (error) {
       logger.error(error.message);
       return res.json(error);
     }
     return res.status(200).json({ success: true, data });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`[Offices fetch] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${message}` });
+=======
+  } catch (err: any) {
+    logger.error(`[Offices fetch] : ${err.message}`);
+    return res
+      .status(500)
+      .json({ success: false, message: `Server Error ${err.message}` });
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   }
 }
 
@@ -69,7 +89,11 @@ export const getOfficeById = async (req: Request, res: Response) => {
     const { data, error } = await supabase
       .from("offices")
       .select("id, owner_id, name, address, phone, description")
+<<<<<<< HEAD
       .eq("id", id as string)
+=======
+      .eq("id", id)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (error) {
@@ -99,7 +123,10 @@ export const getOfficeById = async (req: Request, res: Response) => {
       office: data,
     });
   } catch (err) {
+<<<<<<< HEAD
     const message = err instanceof Error ? err.message : String(err);
+=======
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     logger.error(`Unexpected error while fetching office. OfficeId=${id}`, err);
 
     return res.status(500).json({
@@ -177,7 +204,10 @@ export const updateOffice = async (req: AuthRequest, res: Response) => {
       office: data,
     });
   } catch (err) {
+<<<<<<< HEAD
     const message = err instanceof Error ? err.message : String(err);
+=======
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     logger.error(`Unexpected error while updating office. OfficeId=${id}`, err);
 
     return res.status(500).json({
@@ -215,7 +245,11 @@ export async function leaveOffice(req: AuthRequest, res: Response) {
     .from("office_members")
     .delete()
     .eq("office_id", officeId)
+<<<<<<< HEAD
     .eq("lawyer_id", lawyerId as string);
+=======
+    .eq("lawyer_id", lawyerId);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
   if (deleteErr) {
     return res

@@ -2,10 +2,17 @@ import type { Request, Response } from "express";
 import crypto from "crypto";
 import logger from "../utils/logger.js";
 import supabase from "../Services/supabaseClient.js";
+<<<<<<< HEAD
 import type { IAuthRequest } from "../types/AuthRequest.js";
 
 // POST /api/offices/:officeId/invites
 export async function CreateInvite(req: IAuthRequest<{officeId:string}>, res: Response) {
+=======
+import type { AuthRequest } from "../types/AuthRequest.js";
+
+// POST /api/offices/:officeId/invites
+export async function CreateInvite(req: AuthRequest, res: Response) {
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   const { officeId } = req.params;
   const { email, role = "member" } = req.body;
   const inviterId = req.token?.lawyer_id;
@@ -84,17 +91,29 @@ export async function CreateInvite(req: IAuthRequest<{officeId:string}>, res: Re
     }
 
     return res.status(200).json({ success: true, data });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`[Invite Create] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${message}` });
+=======
+  } catch (err: any) {
+    logger.error(`[Invite Create] : ${err.message}`);
+    return res
+      .status(500)
+      .json({ success: false, message: `Server Error ${err.message}` });
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   }
 }
 
 // GET /api/offices/:officeId/invites  (owner view — pending invites for the office)
+<<<<<<< HEAD
 export async function getOfficeInvites(req: IAuthRequest, res: Response) {
+=======
+export async function getOfficeInvites(req: AuthRequest, res: Response) {
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   const { officeId } = req.params;
 
   try {
@@ -131,24 +150,40 @@ export async function getOfficeInvites(req: IAuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`[Invite Fetch] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${message}` });
+=======
+  } catch (err: any) {
+    logger.error(`[Invite Fetch] : ${err.message}`);
+    return res
+      .status(500)
+      .json({ success: false, message: `Server Error ${err.message}` });
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   }
 }
 
 // GET /api/invites/me  (lawyer's own pending invites, matched by email)
+<<<<<<< HEAD
 export async function getMyInvites(req: IAuthRequest, res: Response) {
+=======
+export async function getMyInvites(req: AuthRequest, res: Response) {
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   const lawyerId = req.token?.lawyer_id;
 
   try {
     const { data: lawyer, error: lawyerError } = await supabase
       .from("lawyers")
       .select("email")
+<<<<<<< HEAD
       .eq("id", lawyerId as string)
+=======
+      .eq("id", lawyerId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (lawyerError || !lawyer) {
@@ -172,17 +207,29 @@ export async function getMyInvites(req: IAuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`[Invite Fetch Mine] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${message}` });
+=======
+  } catch (err: any) {
+    logger.error(`[Invite Fetch Mine] : ${err.message}`);
+    return res
+      .status(500)
+      .json({ success: false, message: `Server Error ${err.message}` });
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   }
 }
 
 // POST /api/invites/:inviteId/respond   body: { action: "accepted" | "declined" }
+<<<<<<< HEAD
 export async function respondToInvite(req: IAuthRequest, res: Response) {
+=======
+export async function respondToInvite(req: AuthRequest, res: Response) {
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   const { inviteId } = req.params;
   const { action } = req.body;
   const lawyerId = req.token?.lawyer_id;
@@ -220,7 +267,11 @@ export async function respondToInvite(req: IAuthRequest, res: Response) {
     const { data: lawyer, error: lawyerError } = await supabase
       .from("lawyers")
       .select("id, email")
+<<<<<<< HEAD
       .eq("id", lawyerId as string)
+=======
+      .eq("id", lawyerId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (lawyerError || !lawyer || lawyer.email !== invite.email) {
@@ -265,17 +316,29 @@ export async function respondToInvite(req: IAuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data: updatedInvite });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`[Invite Respond] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${message}` });
+=======
+  } catch (err: any) {
+    logger.error(`[Invite Respond] : ${err.message}`);
+    return res
+      .status(500)
+      .json({ success: false, message: `Server Error ${err.message}` });
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   }
 }
 
 // DELETE /api/invites/:id  (owner cancels a pending invite)
+<<<<<<< HEAD
 export async function cancelInvite(req: IAuthRequest, res: Response) {
+=======
+export async function cancelInvite(req: AuthRequest, res: Response) {
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   const { id } = req.params;
 
   try {
@@ -313,11 +376,19 @@ export async function cancelInvite(req: IAuthRequest, res: Response) {
     return res
       .status(200)
       .json({ success: true, message: "Invite cancelled." });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`[Invite Cancel] : ${message}`);
     return res
       .status(500)
       .json({ success: false, message: `Server Error ${message}` });
+=======
+  } catch (err: any) {
+    logger.error(`[Invite Cancel] : ${err.message}`);
+    return res
+      .status(500)
+      .json({ success: false, message: `Server Error ${err.message}` });
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   }
 }

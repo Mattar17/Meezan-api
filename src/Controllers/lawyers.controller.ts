@@ -1,10 +1,17 @@
 import { type Request, type Response } from "express";
 import supabase from "../Services/supabaseClient.js";
+<<<<<<< HEAD
 import bcrypt from "bcrypt";
 import logger from "../utils/logger.js";
 import type { AuthRequest, IAuthRequest } from "../types/AuthRequest.js";
 import crypto from "node:crypto"
 import fs from "node:fs"
+=======
+import { generateLawyerId } from "../utils/generateLawyerId.js";
+import bcrypt from "bcrypt";
+import logger from "../utils/logger.js";
+import type { AuthRequest } from "../types/AuthRequest.js";
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
 // 🔹 Helper: get lawyer by id
 export const getLawyerByIdHelper = async (id: string) => {
@@ -40,9 +47,14 @@ export const getLawyerById = async (req: Request, res: Response) => {
       success: true,
       data,
     });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`Unexpected error: ${message}`);
+=======
+  } catch (err: any) {
+    logger.error(`Unexpected error: ${err.message}`);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
     return res.status(500).json({
       success: false,
@@ -55,7 +67,11 @@ export const getLawyerById = async (req: Request, res: Response) => {
 export const getAllLawyersAdmin = async (req: AuthRequest, res: Response) => {
   try {
     logger.info("Fetching all lawyers", {
+<<<<<<< HEAD
       user: req.token?.lawyer_id,
+=======
+      user: req.token?.lawyer_token,
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     });
 
     const { data, error } = await supabase.from("lawyers").select("*");
@@ -67,9 +83,14 @@ export const getAllLawyersAdmin = async (req: AuthRequest, res: Response) => {
       count: data.length,
       data,
     });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("Error fetching lawyers", { message: message });
+=======
+  } catch (err: any) {
+    logger.error("Error fetching lawyers", { message: err.message });
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
     return res.status(500).json({
       success: false,
@@ -77,6 +98,7 @@ export const getAllLawyersAdmin = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+<<<<<<< HEAD
 // 🔹 GET ALL LAWYERS (PUBLIC — excludes password_hash)
 export const getAllLawyersPublic = async (req: AuthRequest, res: Response) => {
   try {
@@ -96,6 +118,61 @@ export const getAllLawyersPublic = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("Error fetching lawyers", { message });
+=======
+export const getAllLawyersPublic = async (req: AuthRequest, res: Response) => {
+  try {
+    logger.info("Fetching all lawyers", {
+      user: req.token?.lawyer_token,
+    });
+
+    const { data, error } = await supabase.from("lawyers").select("*");
+
+    if (error) throw error;
+
+    const LawyersDTO = data.map(({ token, ...rest }) => rest);
+
+    return res.status(200).json({
+      success: true,
+      count: data.length,
+      data: LawyersDTO,
+    });
+  } catch (err: any) {
+    logger.error("Error fetching lawyers", { message: err.message });
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+// 🔹 GET LAWYER BY TOKEN
+export const getLawyerByToken = async (req: AuthRequest, res: Response) => {
+  try {
+    const tokenParam = req.params.token;
+
+    const { data, error } = await supabase
+      .from("lawyers")
+      .select("*")
+      .eq("token", tokenParam)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        success: false,
+        message: "Lawyer not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (err: any) {
+    logger.error("Error fetching lawyer by token", {
+      message: err.message,
+    });
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
     return res.status(500).json({
       success: false,
@@ -114,6 +191,7 @@ export const createLawyer = async (req: AuthRequest, res: Response) => {
       });
     }
 
+<<<<<<< HEAD
     const { name, email, password } = req.body;
 
     if (!name || !email) {
@@ -126,14 +204,29 @@ export const createLawyer = async (req: AuthRequest, res: Response) => {
     // Use provided password or default "000000"
     const rawPassword = password || "000000";
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
+=======
+    const { name } = req.body;
+
+    const token = await generateLawyerId();
+    if (!token) throw new Error("Token generation failed");
+
+    const hashedProfilePassword = await bcrypt.hash("000000", 10);
+    const hashedPortalPassword = await bcrypt.hash("000000", 10);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
     const { data, error } = await supabase
       .from("lawyers")
       .insert([
         {
           name,
+<<<<<<< HEAD
           email,
           password_hash: hashedPassword,
+=======
+          token,
+          profile_password: hashedProfilePassword,
+          portal_password: hashedPortalPassword,
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
         },
       ])
       .select()
@@ -142,13 +235,18 @@ export const createLawyer = async (req: AuthRequest, res: Response) => {
     if (error) throw error;
 
     logger.info("Lawyer created", {
+<<<<<<< HEAD
       lawyerId: data.id,
+=======
+      token: token.slice(0, 5) + "***",
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     });
 
     return res.status(201).json({
       success: true,
       data,
     });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("Error creating lawyer", { message });
@@ -156,6 +254,14 @@ export const createLawyer = async (req: AuthRequest, res: Response) => {
     return res.status(400).json({
       success: false,
       message,
+=======
+  } catch (err: any) {
+    logger.error("Error creating lawyer", { message: err.message });
+
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     });
   }
 };
@@ -173,7 +279,11 @@ export const updateLawyer = async (req: AuthRequest, res: Response) => {
     }
     if (req.token?.lawyer_id !== lawyer.id) {
       logger.warn("Unauthorized update attempt", {
+<<<<<<< HEAD
         user: req.token?.lawyer_id,
+=======
+        user: req.token?.lawyer_token,
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       });
 
       return res.status(403).json({
@@ -184,7 +294,11 @@ export const updateLawyer = async (req: AuthRequest, res: Response) => {
     const { data, error } = await supabase
       .from("lawyers")
       .update(req.body)
+<<<<<<< HEAD
       .eq("id", req.params.id as string)
+=======
+      .eq("id", req.params.id)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .select("*")
       .single();
 
@@ -194,6 +308,7 @@ export const updateLawyer = async (req: AuthRequest, res: Response) => {
       success: true,
       data,
     });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("Error updating lawyer", { message: message });
@@ -201,6 +316,14 @@ export const updateLawyer = async (req: AuthRequest, res: Response) => {
     return res.status(400).json({
       success: false,
       message: message,
+=======
+  } catch (err: any) {
+    logger.error("Error updating lawyer", { message: err.message });
+
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     });
   }
 };
@@ -218,7 +341,11 @@ export const deleteLawyer = async (req: AuthRequest, res: Response) => {
     const { error } = await supabase
       .from("lawyers")
       .delete()
+<<<<<<< HEAD
       .eq("id", req.params.id as string);
+=======
+      .eq("id", req.params.id);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
     if (error) throw error;
 
@@ -226,9 +353,14 @@ export const deleteLawyer = async (req: AuthRequest, res: Response) => {
       success: true,
       message: "Lawyer deleted successfully",
     });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("Error deleting lawyer", { message: message });
+=======
+  } catch (err: any) {
+    logger.error("Error deleting lawyer", { message: err.message });
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
     return res.status(500).json({
       success: false,
@@ -237,8 +369,13 @@ export const deleteLawyer = async (req: AuthRequest, res: Response) => {
   }
 };
 
+<<<<<<< HEAD
 // 🔹 UPDATE PASSWORD
 export const updatePassword = async (
+=======
+// 🔹 UPDATE PROFILE PASSWORD
+export const updateProfilePassword = async (
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   req: AuthRequest,
   res: Response,
 ) => {
@@ -254,7 +391,11 @@ export const updatePassword = async (
       });
     }
 
+<<<<<<< HEAD
     if (req.token?.lawyer_id !== lawyer.id) {
+=======
+    if (req.token?.lawyer_token !== lawyer.token) {
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       return res.status(403).json({
         success: false,
         message: "Access denied",
@@ -262,7 +403,11 @@ export const updatePassword = async (
     }
     const isMatch = await bcrypt.compare(
       currentPassword,
+<<<<<<< HEAD
       lawyer.password_hash,
+=======
+      lawyer.profile_password,
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     );
 
     if (!isMatch) {
@@ -276,8 +421,13 @@ export const updatePassword = async (
 
     const { error } = await supabase
       .from("lawyers")
+<<<<<<< HEAD
       .update({ password_hash: hashed })
       .eq("id", req.params.id as string);
+=======
+      .update({ profile_password: hashed })
+      .eq("id", req.params.id);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
     if (error) throw error;
 
@@ -285,15 +435,83 @@ export const updatePassword = async (
       success: true,
       message: "تم تغيير كلمة المرور بنجاج",
     });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("حدث خطأ!! حاول مرةً أخرى", {
       message: message,
+=======
+  } catch (err: any) {
+    logger.error("حدث خطأ!! حاول مرةً أخرى", {
+      message: err.message,
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     });
 
     return res.status(400).json({
       success: false,
+<<<<<<< HEAD
       message: message,
+=======
+      message: err.message,
+    });
+  }
+};
+
+// 🔹 UPDATE PORTAL PASSWORD
+export const updatePortalPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const { profilePassword, newPortalPassword } = req.body;
+
+    const lawyer = await getLawyerByIdHelper(req.params.id as string);
+
+    if (!lawyer) {
+      return res.status(404).json({
+        success: false,
+        message: "Lawyer not found",
+      });
+    }
+
+    if (req.token?.lawyer_token !== lawyer.token) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(
+      profilePassword,
+      lawyer.profile_password,
+    );
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "كلمة المرور الخاصة غير صحيحة",
+      });
+    }
+
+    const hashed = await bcrypt.hash(newPortalPassword, 10);
+
+    const { error } = await supabase
+      .from("lawyers")
+      .update({ portal_password: hashed })
+      .eq("id", req.params.id);
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      message: "تم تغيير كلمة مرور بوابتك بنجاج",
+    });
+  } catch (err: any) {
+    logger.error("Error updating portal password", {
+      message: err.message,
+    });
+
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     });
   }
 };
@@ -332,7 +550,11 @@ export const setProfilePicture = async (req: Request, res: Response) => {
     const { error: updateError } = await supabase
       .from("lawyers")
       .update({ picture_url: data.publicUrl })
+<<<<<<< HEAD
       .eq("id", id as string);
+=======
+      .eq("id", id);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
     if (updateError) {
       logger.error(`Error while updating picture: ${updateError}`);
@@ -348,6 +570,7 @@ export const setProfilePicture = async (req: Request, res: Response) => {
       message: "تم تعديل الصورة الشخصية بنجاح",
     });
   } catch (err) {
+<<<<<<< HEAD
     const message = err instanceof Error ? err.message : String(err);
     return res.status(500).json({
       success: false,
@@ -595,3 +818,11 @@ export const getSubscriptionStatus = async (req: IAuthRequest, res: Response) =>
 };
 
 
+=======
+    return res.status(500).json({
+      success: false,
+      message: err instanceof Error ? err.message : "Unknown error",
+    });
+  }
+};
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63

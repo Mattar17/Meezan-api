@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+<<<<<<< HEAD
 
 interface TokenPayload {
   lawyer_id?:string,
@@ -22,4 +23,11 @@ export default function generateToken(payload: TokenPayload) : AuthTokens {
   const accessToken = jwt.sign(payload,accessKey,{expiresIn:"1h"});
 
   return {accessToken,refreshToken}
+=======
+export default function generateToken(payload: object) {
+  const jwtKey = process.env.JWT_SECRET;
+  if (!jwtKey) throw new Error("cannot generate jwt token");
+  const token = jwt.sign(payload, jwtKey, { expiresIn: "1d" });
+  return token;
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 }

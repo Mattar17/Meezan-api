@@ -21,7 +21,11 @@ export async function createCase(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
+<<<<<<< HEAD
       .eq("id", officeId as string)
+=======
+      .eq("id", officeId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (officeError || !office)
@@ -65,9 +69,14 @@ export async function createCase(req: AuthRequest, res: Response) {
       message: "تم إنشاء القضية بنجاح",
       data: createdCase,
     });
+<<<<<<< HEAD
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error(`Error creating the case : ${message}`);
+=======
+  } catch (error: any) {
+    logger.error(`Error creating the case : ${error.message}`);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "خطأ أثناء إضافة قضية" });
@@ -90,7 +99,11 @@ export async function getOfficeCases(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
+<<<<<<< HEAD
       .eq("id", officeId as string)
+=======
+      .eq("id", officeId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (!office || officeError) {
@@ -103,7 +116,11 @@ export async function getOfficeCases(req: AuthRequest, res: Response) {
       const { data: membership, error: membershipError } = await supabase
         .from("office_members")
         .select("id")
+<<<<<<< HEAD
         .eq("office_id", officeId as string)
+=======
+        .eq("office_id", officeId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
         .eq("lawyer_id", lawyerId)
         .single();
 
@@ -119,7 +136,11 @@ export async function getOfficeCases(req: AuthRequest, res: Response) {
       const { data, error } = await supabase
         .from("cases")
         .select("*")
+<<<<<<< HEAD
         .eq("office_id", officeId as string);
+=======
+        .eq("office_id", officeId);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
       if (error)
         return res.status(500).json({
@@ -131,7 +152,11 @@ export async function getOfficeCases(req: AuthRequest, res: Response) {
       const { data, error } = await supabase
         .from("cases")
         .select("*")
+<<<<<<< HEAD
         .eq("office_id", officeId as string)
+=======
+        .eq("office_id", officeId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
         .eq("assigned_lawyer_id", lawyerId);
 
       if (error)
@@ -142,9 +167,14 @@ export async function getOfficeCases(req: AuthRequest, res: Response) {
       fetchedCases = data;
     }
     return res.status(200).json({ success: true, data: fetchedCases });
+<<<<<<< HEAD
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error(`Error fetching office cases: ${message}`);
+=======
+  } catch (error: any) {
+    logger.error(`Error fetching office cases: ${error.message}`);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تحميل قضايا المكتب" });
@@ -169,7 +199,11 @@ export async function assignLawyerToCase(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
+<<<<<<< HEAD
       .eq("id", officeId as string)
+=======
+      .eq("id", officeId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (!office || officeError) {
@@ -193,7 +227,11 @@ export async function assignLawyerToCase(req: AuthRequest, res: Response) {
       const { data: membership, error: membershipError } = await supabase
         .from("office_members")
         .select("id")
+<<<<<<< HEAD
         .eq("office_id", officeId as string)
+=======
+        .eq("office_id", officeId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
         .eq("lawyer_id", lawyerToAssign)
         .single();
 
@@ -207,8 +245,13 @@ export async function assignLawyerToCase(req: AuthRequest, res: Response) {
     const { data: updatedCase, error: updateError } = await supabase
       .from("cases")
       .update({ assigned_lawyer_id: lawyerToAssign })
+<<<<<<< HEAD
       .eq("id", caseId as string)
       .eq("office_id", officeId as string)
+=======
+      .eq("id", caseId)
+      .eq("office_id", officeId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .select("id");
 
     if (updateError)
@@ -227,9 +270,14 @@ export async function assignLawyerToCase(req: AuthRequest, res: Response) {
         ? "تم إلغاء تعيين المحامي بنجاح"
         : "تم تعيين المحامي علي القضية بنجاح",
     });
+<<<<<<< HEAD
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error(`Error assigning lawyer to case: ${message}`);
+=======
+  } catch (error: any) {
+    logger.error(`Error assigning lawyer to case: ${error.message}`);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تعيين المحامي" });
@@ -252,7 +300,11 @@ export async function getCaseDetails(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
+<<<<<<< HEAD
       .eq("id", officeId as string)
+=======
+      .eq("id", officeId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (!office || officeError) {
@@ -264,8 +316,13 @@ export async function getCaseDetails(req: AuthRequest, res: Response) {
     const { data: fetchedCase, error: fetchedCaseError } = await supabase
       .from("cases")
       .select("*")
+<<<<<<< HEAD
       .eq("office_id", officeId as string)
       .eq("id", caseId as string)
+=======
+      .eq("office_id", officeId)
+      .eq("id", caseId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (!fetchedCase || fetchedCaseError)
@@ -282,9 +339,14 @@ export async function getCaseDetails(req: AuthRequest, res: Response) {
         .json({ success: false, message: "لا يمكنك الإطلاع علي هذه القضية" });
 
     return res.status(200).json({ success: true, data: fetchedCase });
+<<<<<<< HEAD
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error(`Error fetching case details: ${message}`);
+=======
+  } catch (error: any) {
+    logger.error(`Error fetching case details: ${error.message}`);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تحميل بيانات القضية" });
@@ -307,7 +369,11 @@ export async function updateCase(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
+<<<<<<< HEAD
       .eq("id", officeId as string)
+=======
+      .eq("id", officeId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (!office || officeError) {
@@ -319,8 +385,13 @@ export async function updateCase(req: AuthRequest, res: Response) {
     const { data: fetchedCase, error: fetchedCaseError } = await supabase
       .from("cases")
       .select("id,assigned_lawyer_id")
+<<<<<<< HEAD
       .eq("office_id", officeId as string)
       .eq("id", caseId as string )
+=======
+      .eq("office_id", officeId)
+      .eq("id", caseId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (!fetchedCase || fetchedCaseError)
@@ -368,9 +439,14 @@ export async function updateCase(req: AuthRequest, res: Response) {
       data: updatedCase,
       message: "تم تعديل القضية بنجاح",
     });
+<<<<<<< HEAD
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error(`Error udpating case: ${message}`);
+=======
+  } catch (error: any) {
+    logger.error(`Error udpating case: ${error.message}`);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء تعديل القضية" });
@@ -393,7 +469,11 @@ export async function deleteCase(req: AuthRequest, res: Response) {
     const { data: office, error: officeError } = await supabase
       .from("offices")
       .select("owner_id")
+<<<<<<< HEAD
       .eq("id", officeId as string)
+=======
+      .eq("id", officeId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (!office || officeError) {
@@ -410,8 +490,13 @@ export async function deleteCase(req: AuthRequest, res: Response) {
     const { data: deletedCase, error: deleteError } = await supabase
       .from("cases")
       .delete()
+<<<<<<< HEAD
       .eq("office_id", officeId as string)
       .eq("id", caseId as string)
+=======
+      .eq("office_id", officeId)
+      .eq("id", caseId)
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .select("case_number")
       .single();
 
@@ -425,9 +510,14 @@ export async function deleteCase(req: AuthRequest, res: Response) {
       success: true,
       message: `تم حذف القضية رقم ${deletedCase.case_number}`,
     });
+<<<<<<< HEAD
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error(`Error deleting case: ${message}`);
+=======
+  } catch (error: any) {
+    logger.error(`Error deleting case: ${error.message}`);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء حذف القضية" });

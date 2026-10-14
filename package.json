@@ -8,8 +8,12 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
+<<<<<<< HEAD
     "dev": "tsx watch src/index.ts",
     "types": "npx supabase gen types typescript --project-id yhagsaelhnkytgxbaibi --schema public > src/types/database.types.ts"
+=======
+    "dev": "node api.js && tsx watch src/index.ts"
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.102.0",

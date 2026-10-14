@@ -2,6 +2,7 @@ import express from "express";
 
 import { Login } from "../Controllers/Login.js";
 import Register from "../Controllers/Register.js";
+<<<<<<< HEAD
 import AddAdmin from "../Controllers/addAdmin.js";
 import { RefreshToken } from "../Controllers/RefreshToken.js";
 
@@ -39,5 +40,16 @@ router.post("/reset-password", resetPassword);
 router.post("/auth/forgot-password", forgotPasswordLimiter, requestPasswordReset);
 router.post("/auth/verify-otp", verifyResetOtp);
 router.post("/auth/reset-password", resetPassword);
+=======
+import AccessPortal from "../Controllers/AccessPortal.js";
+import AddAdmin from "../Controllers/addAdmin.js";
+
+const router = express.Router();
+
+router.post("/login", Login);
+router.post("/register", Register);
+router.post("/portal-access", AccessPortal);
+router.post("/admin", AddAdmin);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
 export default router;

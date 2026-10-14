@@ -43,7 +43,10 @@ async function StartTrial(req: Request, res: Response) {
       data: signLicense(trial),
     });
   } catch (err) {
+<<<<<<< HEAD
     const message = err instanceof Error ? err.message : String(err);
+=======
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     logger.error(`BeginTrial error: ${err}`);
     return res.status(500).json({ success: false, message: "server error" });
   }

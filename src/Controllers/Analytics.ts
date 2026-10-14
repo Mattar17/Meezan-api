@@ -13,11 +13,18 @@ async function numberOfDownloads(req: Request, res: Response) {
     );
 
     return res.status(200).json(analytics?.numberOfDownloads);
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("Error fetching downloads", {
       message,
       stack: err instanceof Error ? err.stack : undefined,
+=======
+  } catch (err: any) {
+    logger.error("Error fetching downloads", {
+      message: err.message,
+      stack: err.stack,
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     });
 
     return res.status(500).json("server error");
@@ -36,11 +43,18 @@ async function increamentDownloads(req: Request, res: Response) {
     logger.info("Downloads incremented successfully");
 
     return res.status(200).json({ success: true });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("Error incrementing downloads", {
       message,
       stack: err instanceof Error ? err.stack : undefined,
+=======
+  } catch (err: any) {
+    logger.error("Error incrementing downloads", {
+      message: err.message,
+      stack: err.stack,
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     });
 
     return res.status(500).json("server error");

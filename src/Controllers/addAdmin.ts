@@ -49,9 +49,14 @@ export default async function AddAdmin(req: Request, res: Response) {
     return res
       .status(200)
       .json({ success: true, message: "تم تعيين مسئول بنجاح" });
+<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`error [AddAdmin] : ${message}`);
+=======
+  } catch (err: any) {
+    logger.error(`error [AddAdmin] : ${err.message}`);
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "Error while adding admin" });

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
@@ -42,4 +43,23 @@ export default function verifyToken(
       message: "Token is invalid or corrupted",
     });
   }
+=======
+import jwt from "jsonwebtoken";
+export default function verifyToken(req: any, res: any, next: any) {
+  const authHeader =
+    req.headers["authorization"] || req.headers["Authorization"];
+  if (!authHeader) {
+    return res
+      .status(401)
+      .json({ success: false, message: "No token provided" });
+  }
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res
+      .status(401)
+      .json({ success: false, message: "No token provided" });
+  }
+  req.token = jwt.verify(token, process.env.JWT_SECRET as string);
+  next();
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 }

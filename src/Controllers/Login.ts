@@ -1,10 +1,14 @@
 import { type Response, type Request } from "express";
 import bcrypt from "bcrypt";
+<<<<<<< HEAD
 import crypto from "node:crypto";
+=======
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 import generateToken from "../Services/generateToken.js";
 import logger from "../utils/logger.js";
 import supabase from "../Services/supabaseClient.js";
 
+<<<<<<< HEAD
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 // Dummy hash to execute constant-time bcrypt compare when user does not exist
 const DUMMY_HASH = "$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012345";
@@ -74,6 +78,39 @@ export const Login = async (req: Request, res: Response) => {
       });
     }
 
+=======
+export const Login = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    const { data: lawyer, error } = await supabase
+      .from("lawyers")
+      .select()
+      .eq("email", email)
+      .single();
+
+    if (error || !lawyer) {
+      return res.status(404).json({
+        success: false,
+        message: "المستخدم غير موجود",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, lawyer.password_hash);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "كلمة المرور غير صحيحة",
+      });
+    }
+
+    const generatedToken = await generateToken({
+      lawyer_email: email,
+      lawyer_id: lawyer.id,
+      is_admin: lawyer.is_admin,
+    });
+
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     const lawyerInfo = {
       id: lawyer.id,
       name: lawyer.name,
@@ -81,6 +118,7 @@ export const Login = async (req: Request, res: Response) => {
       email: lawyer.email,
       pictureUrl: lawyer.picture_url,
       isAdmin: lawyer.is_admin,
+<<<<<<< HEAD
       isVerified:lawyer.is_verified
     };
 
@@ -119,3 +157,18 @@ export const Login = async (req: Request, res: Response) => {
     });
   }
 };
+=======
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: { token: generatedToken, user: lawyerInfo },
+    });
+  } catch (err) {
+    logger.error(`Login error: ${err}`);
+    return res
+      .status(500)
+      .json({ success: false, message: `${err} server error` });
+  }
+};
+>>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
