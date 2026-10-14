@@ -4,10 +4,7 @@ import path from "path";
 import logger from "../utils/logger.js";
 import supabase from "../Services/supabaseClient.js";
 import { type AuthRequest } from "../types/AuthRequest.js";
-<<<<<<< HEAD
 import { Database } from "@/types/database.types.js";
-=======
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
 export async function GetAllCategories(req: AuthRequest, res: Response) {
   try {
@@ -24,14 +21,9 @@ export async function GetAllCategories(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data: categories });
-<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`GetAllCategories error: ${message}`);
-=======
-  } catch (err: any) {
-    logger.error(`GetAllCategories error: ${err.message}`);
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });
@@ -72,14 +64,9 @@ export async function CreateCategory(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data: insertedCategory });
-<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`error creating category: ${message}`);
-=======
-  } catch (err: any) {
-    logger.error(`error creating category: ${err.message}`);
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ أثناء إنشاء التصنيف" });
@@ -169,14 +156,9 @@ export async function UploadBook(req: AuthRequest, res: Response) {
       data: insertedBook,
       message: "تم رفع الكتاب بنجاح",
     });
-<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`UploadBookController error: ${message}`);
-=======
-  } catch (err: any) {
-    logger.error(`UploadBookController error: ${err.message}`);
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });
@@ -194,11 +176,7 @@ export async function GetAllBooksInCategory(req: AuthRequest, res: Response) {
     const { data: fetchedCategory, error: catError } = await supabase
       .from("categories")
       .select("id,name")
-<<<<<<< HEAD
       .eq("id", categoryId as string)
-=======
-      .eq("id", categoryId)
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (!fetchedCategory || catError)
@@ -209,11 +187,7 @@ export async function GetAllBooksInCategory(req: AuthRequest, res: Response) {
     const { data: books, error: fetchError } = await supabase
       .from("books")
       .select("*")
-<<<<<<< HEAD
       .eq("category_id", categoryId as string);
-=======
-      .eq("category_id", categoryId);
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
     if (fetchError) {
       logger.error(`[fetch books error]: ${fetchError.message}`);
@@ -223,14 +197,9 @@ export async function GetAllBooksInCategory(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, data: books });
-<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`GET all books error: ${message}`);
-=======
-  } catch (err: any) {
-    logger.error(`GET all books error: ${err.message}`);
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });
@@ -244,11 +213,7 @@ export async function GetFileUrl(req: AuthRequest, res: Response) {
     const { data: book, error: fetchError } = await supabase
       .from("books")
       .select("storage_path")
-<<<<<<< HEAD
       .eq("id", bookId as string)
-=======
-      .eq("id", bookId)
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (!book || fetchError) {
@@ -274,16 +239,10 @@ export async function GetFileUrl(req: AuthRequest, res: Response) {
       .status(200)
       .json({ success: true, data: { url: data.signedUrl } });
   } catch (err) {
-<<<<<<< HEAD
     const message = err instanceof Error ? err.message : String(err);
     logger.error("GetFileUrl: unexpected error", {
       filePath: req.body?.filePath,
       error: message,
-=======
-    logger.error("GetFileUrl: unexpected error", {
-      filePath: req.body?.filePath,
-      error: err instanceof Error ? err.message : err,
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     });
     return res.status(500).json({ error: "Internal server error" });
   }
@@ -307,11 +266,7 @@ export async function DeleteCategory(req: AuthRequest, res: Response) {
     const { data: fetchedCategory, error: catError } = await supabase
       .from("categories")
       .select("id")
-<<<<<<< HEAD
       .eq("id", categoryId as string)
-=======
-      .eq("id", categoryId)
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (!fetchedCategory || catError)
@@ -322,11 +277,7 @@ export async function DeleteCategory(req: AuthRequest, res: Response) {
     const { error } = await supabase
       .from("categories")
       .delete()
-<<<<<<< HEAD
       .eq("id", categoryId as string);
-=======
-      .eq("id", categoryId);
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
     if (error) {
       // FK violation: books still reference this category
@@ -343,14 +294,9 @@ export async function DeleteCategory(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, message: "تم حذف التصنيف" });
-<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`DeleteCategory error: ${message}`);
-=======
-  } catch (err: any) {
-    logger.error(`DeleteCategory error: ${err.message}`);
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });
@@ -375,11 +321,7 @@ export async function DeleteBook(req: AuthRequest, res: Response) {
     const { data: book, error: fetchError } = await supabase
       .from("books")
       .select("id, storage_path")
-<<<<<<< HEAD
       .eq("id", bookId as string)
-=======
-      .eq("id", bookId)
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .single();
 
     if (!book || fetchError)
@@ -404,11 +346,7 @@ export async function DeleteBook(req: AuthRequest, res: Response) {
     const { error: deleteError } = await supabase
       .from("books")
       .delete()
-<<<<<<< HEAD
       .eq("id", bookId as string);
-=======
-      .eq("id", bookId);
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
 
     if (deleteError) {
       // File is already gone from storage but the row remains — flag loudly, this is an inconsistent state
@@ -422,14 +360,9 @@ export async function DeleteBook(req: AuthRequest, res: Response) {
     }
 
     return res.status(200).json({ success: true, message: "تم حذف الكتاب" });
-<<<<<<< HEAD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`DeleteBook error: ${message}`);
-=======
-  } catch (err: any) {
-    logger.error(`DeleteBook error: ${err.message}`);
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });
@@ -474,13 +407,8 @@ export async function UpdateBookInfo(req: AuthRequest, res: Response) {
         .status(400)
         .json({ success: false, message: "الوصف غير صحيح" });
     }
-<<<<<<< HEAD
     type BookUpdate = Database["public"]["Tables"]["books"]["Update"]
     const updatePayload: BookUpdate = {};
-=======
-
-    const updatePayload: Record<string, any> = {};
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     if (title !== undefined) updatePayload.title = title.trim();
     if (description !== undefined) updatePayload.description = description;
 
@@ -508,11 +436,7 @@ export async function UpdateBookInfo(req: AuthRequest, res: Response) {
     const { data: updatedBook, error } = await supabase
       .from("books")
       .update(updatePayload)
-<<<<<<< HEAD
       .eq("id", bookId as string)
-=======
-      .eq("id", bookId)
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       .select()
       .single();
 
@@ -534,19 +458,12 @@ export async function UpdateBookInfo(req: AuthRequest, res: Response) {
     return res.status(200).json({
       success: true,
       message: "تم تحديث بيانات الكتاب",
-<<<<<<< HEAD
       data: updatedBook,
       book: updatedBook,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`UpdateBookInfo error: ${message}`);
-=======
-      book: updatedBook,
-    });
-  } catch (err: any) {
-    logger.error(`UpdateBookInfo error: ${err.message}`);
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     return res
       .status(500)
       .json({ success: false, message: "حدث خطأ في الخادم" });

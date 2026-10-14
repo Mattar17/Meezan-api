@@ -30,11 +30,7 @@ export default async function ValidateLicense(
     }
     const license = data[0];
     console.log(license.used_devices.length);
-<<<<<<< HEAD
     if (license.used_devices!.length >= license.max_devices!) {
-=======
-    if (license.used_devices!.length >= license.max_devices) {
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
       logger.warn(`Max devices limit reached for key: ${key}`);
       return res
         .status(403)
@@ -49,10 +45,7 @@ export default async function ValidateLicense(
       .status(200)
       .json({ success: true, message: "Valid license", data: license });
   } catch (err) {
-<<<<<<< HEAD
     const message = err instanceof Error ? err.message : String(err);
-=======
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
     logger.error(`ValidateLicense error: ${err}`);
     return res.status(500).json({ success: false, message: "Server error" });
   }

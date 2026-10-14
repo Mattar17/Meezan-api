@@ -8,7 +8,6 @@ const FileFilter = (req: any, file: any, cb: any) => {
     "text/plain",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-<<<<<<< HEAD
     "image/jpeg",
     "image/jpg",
     "image/png",
@@ -20,14 +19,6 @@ const FileFilter = (req: any, file: any, cb: any) => {
     cb(null, true);
   } else {
     cb(new Error("فقط ملفات PDF, TXT, DOC, DOCX والصور مسموح بها"));
-=======
-  ];
-
-  if (allowedMimes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("فقط ملفات PDF, TXT, DOC, DOCX مسموح بها"));
->>>>>>> a60ee4f1deba1d483657d098bba392f5818b5f63
   }
 };
 
