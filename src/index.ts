@@ -11,7 +11,8 @@ import cookieParser from "cookie-parser"
 
 app.use(
   cors({
-    origin: "*",
+    origin: true,
+    credentials: true,
     optionsSuccessStatus: 200,
   }),
 );
