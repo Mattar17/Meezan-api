@@ -2,104 +2,68 @@ import type { Request, Response } from "express";
 import CreateIntention from "../Services/CreatePaymentIntention.js";
 import supabase from "../Services/supabaseClient.js";
 import logger from "../utils/logger.js";
-import crypto from "crypto";
-import { lookup } from "dns";
+import { IAuthRequest } from "../types/AuthRequest.js";
+import _ from "underscore";
+import queryString from "query-string";
+import crypto from "node:crypto"
 
-function calculateHMAC(data: any) {
-  const safe = (v: any) => (v === undefined || v === null ? "" : v);
-  const bool = (v: any) => (v === true ? "true" : v === false ? "false" : "");
-
-  const hmacString =
-    safe(data.amount_cents) +
-    safe(data.created_at) +
-    safe(data.currency) +
-    bool(data.error_occured) +
-    bool(data.has_parent_transaction) +
-    safe(data.id) +
-    safe(data.integration_id) +
-    bool(data.is_3d_secure) +
-    bool(data.is_auth) +
-    bool(data.is_capture) +
-    bool(data.is_refunded) +
-    bool(data.is_standalone_payment) +
-    bool(data.is_voided) +
-    safe(data.order?.id) +
-    safe(data.owner) +
-    bool(data.pending) +
-    safe(data.source_data?.pan) +
-    safe(data.source_data?.sub_type) +
-    safe(data.source_data?.type) +
-    bool(data.success);
-
-  const calculatedHmac = crypto
-    .createHmac("sha512", process.env.PAYMOB_HMAC_SECRET!)
-    .update(hmacString)
-    .digest("hex");
-
-  return calculatedHmac;
-}
-
-export async function PaymentIntention(req: Request, res: Response) {
+export async function PaymentIntention(req: IAuthRequest, res: Response) {
   try {
-    const { id } = req.params;
-    console.log(id);
-    const response = await CreateIntention(id as string);
+    const lawyerId = req.token?.lawyer_id as string;
+
+    const {data:lawyer} = await supabase
+    .from("lawyers")
+    .select("email,id")
+    .eq("id",lawyerId)
+    .single();
+    
+    if(!lawyer) return res.status(404).json({success:false,message:"تعذر العثور علي المستخدم"})
+
+    const response = await CreateIntention(lawyer,"standard");
     console.log(response);
-    const clientSecret = response.client_secret;
+    const sessionUrl = response.sessionUrl;
     return res.json({
-      response,
-      link: `https://accept.paymob.com/unifiedcheckout/?publicKey=${process.env.PAYMOB_PUBLIC_KEY}&clientSecret=${clientSecret}`,
+      success:true,
+      data:{sessionUrl}
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return res.status(500).json(`${message}: Failed to create payment`);
   }
 }
-//https://accept.paymob.com/unifiedcheckout/?publicKey={your_public_key}&clientSecret={the_client_secret}'
 
 export async function handlePaymentWebhook(req: Request, res: Response) {
   try {
-    console.log("Webhook received");
-    logger.log("warn", { message: "Request Queries", data: req.query });
-    logger.log("warn", { message: "Request Params", data: req.params });
+    const {data,event} = req.body;
 
-    // 1. Validate body exists
-    if (!req.body || !req.body.obj) {
-      console.log("Invalid payload");
-      return res.status(400).json({ error: "Invalid payload" });
+    data.signatureKeys.sort();
+    const objectSignaturePayload = _.pick(data,data.signatureKeys);
+    const signturePayload = queryString.stringify(objectSignaturePayload);
+    const signature = crypto
+    .createHmac("sha256",process.env.PAYMENT_TEST_KEY!)
+    .update(signturePayload)
+    .digest("hex")
+
+    const kashierSignature = req.headers["x-kashier-signature"];
+
+    if (signature !== kashierSignature){
+      return res.status(403).json({success:false,message:"لا يمكن إتمام عملية الدفع"})
     }
 
-    const data = req.body.obj;
+    if (event.status === "SUCCESS" && data.status === "SUCCESS"){
+      const {data:pendingOrder} = await supabase
+      .from('pending_orders')
+      .select("*")
+      .eq("order_id",data.orderId)
+      .maybeSingle()
 
-    // 2. Extract important fields
-    const { id, success, amount_cents, order, is_capture, integration_id } =
-      data;
+      if(!pendingOrder) return res.status(404).json({success:false,message:"Order Not Found"})
 
-    console.log("Payment ID:", id);
-    console.log("Success:", success);
-    console.log("is Capture", is_capture);
+        
 
-    // 3. (IMPORTANT) Verify HMAC signature
-    const receivedHmac = req.query.hmac as string;
-
-    const calculatedHmac = calculateHMAC(data);
-    if (receivedHmac !== calculatedHmac) {
-      console.log("Invalid HMAC ❌");
-      return res.status(403).json({ error: "Invalid signature" });
+    }else{
+      return res.status(500).json({success:false,message:"payment failed"})
     }
-
-    console.log("HMAC verified ✅");
-
-    // 4. Update your database
-    if (success) {
-      // mark order as paid
-      console.log("Payment SUCCESS → update DB");
-    } else {
-      console.log("Payment FAILED");
-    }
-
-    // 5. Always respond quickly
-    return res.status(200).json({ received: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("Webhook error:", err);

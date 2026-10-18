@@ -607,6 +607,41 @@ export type Database = {
           },
         ]
       }
+      pending_orders: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          lawyer_id: string
+          order_id: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          lawyer_id: string
+          order_id: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          lawyer_id?: string
+          order_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_orders_lawyer_id_fkey"
+            columns: ["lawyer_id"]
+            isOneToOne: false
+            referencedRelation: "lawyers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_requests: {
         Row: {
           created_at: string | null

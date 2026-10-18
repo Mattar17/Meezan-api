@@ -1,62 +1,69 @@
-var myHeaders = new Headers();
-myHeaders.append("Authorization", `Token ${process.env.PAYMOB_SECRET}`);
-myHeaders.append("Content-Type", "application/json");
-myHeaders.append("api_key", process.env.PAYMOB_API_KEY!);
+import crypto from "node:crypto"
+import "dotenv/config"
+import supabase from "./supabaseClient.js";
 
-var raw = {
-  amount: 150 * 100,
-  currency: "EGP",
-  payment_methods: [5624415],
-  items: [
-    {
-      name: "Monthly Payment",
-      amount: 150 * 100,
-      description: "get a monthly description in lawsync",
-      quantity: 1,
-    },
-  ],
-  billing_data: {
-    apartment: "dumy",
-    first_name: "ala",
-    last_name: "zain",
-    street: "dumy",
-    building: "dumy",
-    phone_number: "+2010xxxxxxxx",
-    city: "dumy",
-    country: "dumy",
-    email: "ali@gmail.com",
-    floor: "dumy",
-    state: "dumy",
-  },
-  extras: {
-    ee: 22,
-  },
-  special_reference: `order_${Date.now()}`,
-  expiration: 3600,
-  notification_url:
-    "https://hooks.paymob.com/e99a8122-972e-4db3-94fe-5e073b150d60",
-  redirection_url: "https://lawsync-saas.vercel.app/payment_webhook",
-};
-
-export default async function CreateIntention(userId: string) {
-  let hashedUserID = "";
-  const slicedUserId = userId.split("-")[0];
-  for (let i = 0; i < slicedUserId!.length; i++) {
-    const random = Math.floor(Math.random() * 32);
-    hashedUserID += slicedUserId!.charCodeAt(i) + random;
+export default async function CreateIntention(user: { email: string; id: string }, plan: string) {
+  let amount = "200.0";
+  if (plan === "standard") {
+    amount = "200.0";
+  } else if (plan === "pro") {
+    amount = "300.0";
   }
-  const newSpecialReference = `order_${hashedUserID}`;
-  const res = await fetch("https://accept.paymob.com/v1/intention/", {
-    method: "POST",
-    headers: myHeaders,
-    body: JSON.stringify({
-      ...raw,
-      special_reference: newSpecialReference,
-      user_id: userId,
-    }),
-    redirect: "follow",
-  });
 
-  const data = await res.json();
-  return data;
+  const orderId = crypto.randomBytes(16).toString("hex");
+
+  const myHeaders = new Headers();
+  myHeaders.append("Authorization", process.env.PAYMENT_SECRET_KEY!);
+  myHeaders.append("Content-Type", "application/json");
+  myHeaders.append("api-key", process.env.PAYMENT_TEST_KEY!);
+
+  // 4. Construct a brand-new body object scoped to this function call
+  const body = {
+    expireAt: `${Date.now() + 30 * 60 * 1000}`, // 30 minutes from now
+    maxFailureAttempts: 3,
+    paymentType: "credit",
+    amount: amount,
+    merchantId: "MID-52103-393",
+    currency: "EGP",
+    order: orderId,
+    merchantRedirect: "https://lawsync-saas.vercel.app/payment_webhook",
+    display: "en",
+    type: "one-time",
+    allowedMethods: "card,wallet",
+    customer: { 
+      email: user.email, 
+      reference: `customer-${user.id}` 
+    }
+  };
+
+  try {
+    const res = await fetch("https://test-api.kashier.io/v3/payment/sessions", {
+      method: "POST",
+      headers: myHeaders,
+      body: JSON.stringify(body),
+    });
+    
+    const data = await res.json();
+    
+    if (!res.ok) {
+      console.error("[KASHIER API ERROR:]", data);
+      return { message: "Failed to create payment session", details: data };
+    }
+    
+            const {error:saveOrderError} = await supabase
+            .from('pending_orders')
+            .insert({
+              order_id: orderId,
+              lawyer_id: user.id,
+              amount: Number(amount),
+              status: "PENDING"
+            });
+      
+            if(saveOrderError) return {message:"Error adding pending order"}
+
+    return data;
+  } catch (error) {
+    console.error("[PAYMENT INTENTION ERROR:]", error);
+    throw error;
+  }
 }
