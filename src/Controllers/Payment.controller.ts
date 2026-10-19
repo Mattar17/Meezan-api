@@ -10,7 +10,8 @@ import crypto from "node:crypto";
 export async function PaymentIntention(req: IAuthRequest, res: Response) {
   try {
     const lawyerId = req.token?.lawyer_id as string;
-    const plan = (req.body?.plan as PlanType) || "standard";
+    let plan = (req.body?.plan as string) || "standard";
+    if (plan === "basic") plan = "standard";
 
     if (!["standard", "pro"].includes(plan)) {
       return res.status(400).json({
@@ -29,7 +30,7 @@ export async function PaymentIntention(req: IAuthRequest, res: Response) {
       return res.status(404).json({ success: false, message: "تعذر العثور على المستخدم" });
     }
 
-    const response = await CreateIntention(lawyer, plan);
+    const response = await CreateIntention(lawyer, plan as PlanType);
     const sessionUrl = response.sessionUrl;
 
     if (!sessionUrl) {
