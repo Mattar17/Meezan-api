@@ -638,6 +638,7 @@ export async function AnswerSubscriptionRequest(req: AuthRequest, res: Response)
             current_period_start: startDate.toISOString(),
             current_period_end: endDate.toISOString(),
             gateway: "manual",
+            subscription_type: "standard",
           })
           .select()
           .single();

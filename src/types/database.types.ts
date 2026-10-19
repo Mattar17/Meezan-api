@@ -615,6 +615,7 @@ export type Database = {
           lawyer_id: string
           order_id: string
           status: string
+          subscription_type: string
         }
         Insert: {
           amount: number
@@ -623,6 +624,7 @@ export type Database = {
           lawyer_id: string
           order_id: string
           status?: string
+          subscription_type?: string
         }
         Update: {
           amount?: number
@@ -631,6 +633,7 @@ export type Database = {
           lawyer_id?: string
           order_id?: string
           status?: string
+          subscription_type?: string
         }
         Relationships: [
           {
@@ -691,6 +694,7 @@ export type Database = {
           id: string
           lawyer_id: string
           status: string
+          subscription_type: string
           updated_at: string | null
         }
         Insert: {
@@ -703,6 +707,7 @@ export type Database = {
           id?: string
           lawyer_id: string
           status?: string
+          subscription_type?: string
           updated_at?: string | null
         }
         Update: {
@@ -715,6 +720,7 @@ export type Database = {
           id?: string
           lawyer_id?: string
           status?: string
+          subscription_type?: string
           updated_at?: string | null
         }
         Relationships: [
