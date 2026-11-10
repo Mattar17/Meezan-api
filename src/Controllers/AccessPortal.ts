@@ -29,7 +29,7 @@ export default async function AccessPortal(req: Request, res: Response) {
 
     const isPasswordMatched = bcrypt.compareSync(
       password,
-      lawyer.portal_password,
+      (lawyer as any).portal_password,
     );
 
     if (!isPasswordMatched) {

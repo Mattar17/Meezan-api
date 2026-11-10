@@ -16,7 +16,7 @@ import booksRoutes from "./books.routes.js";
 import clientRoutes from "./clients.routes.js";
 import adminRoutes from "./admin.routes.js";
 import lawsRoutes from "./laws.routes.js";
-
+import templateRoutes from "./templates.routes.js";
 
 const router = express.Router();
 
@@ -42,5 +42,6 @@ router.use(taskRoutes);
 router.use(booksRoutes);
 router.use(clientRoutes);
 router.use(lawsRoutes);
+router.use(templateRoutes);
 
 export default router;

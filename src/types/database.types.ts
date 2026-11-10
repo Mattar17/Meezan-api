@@ -322,6 +322,71 @@ export type Database = {
           },
         ]
       }
+      generated_documents: {
+        Row: {
+          case_id: string | null
+          client_id: string | null
+          created_at: string
+          form_values: Json | null
+          id: string
+          lawyer_id: string | null
+          storage_path: string
+          template_id: string | null
+          title: string
+        }
+        Insert: {
+          case_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          form_values?: Json | null
+          id?: string
+          lawyer_id?: string | null
+          storage_path: string
+          template_id?: string | null
+          title: string
+        }
+        Update: {
+          case_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          form_values?: Json | null
+          id?: string
+          lawyer_id?: string | null
+          storage_path?: string
+          template_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_documents_lawyer_id_fkey"
+            columns: ["lawyer_id"]
+            isOneToOne: false
+            referencedRelation: "lawyers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_documents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invites: {
         Row: {
           created_at: string
@@ -413,6 +478,38 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "law_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lawyer_logos: {
+        Row: {
+          id: string
+          lawyer_id: string
+          public_url: string
+          storage_path: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          id?: string
+          lawyer_id: string
+          public_url: string
+          storage_path: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          id?: string
+          lawyer_id?: string
+          public_url?: string
+          storage_path?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lawyer_logos_lawyer_id_fkey"
+            columns: ["lawyer_id"]
+            isOneToOne: false
+            referencedRelation: "lawyers"
             referencedColumns: ["id"]
           },
         ]
@@ -787,6 +884,53 @@ export type Database = {
             columns: ["office_id"]
             isOneToOne: false
             referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      templates: {
+        Row: {
+          created_at: string
+          handlebars_content: string | null
+          id: string
+          is_app_template: boolean
+          lawyer_id: string | null
+          pdf_storage_path: string | null
+          placeholders: Json | null
+          raw_arabic_text: string | null
+          template_type: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          handlebars_content?: string | null
+          id?: string
+          is_app_template?: boolean
+          lawyer_id?: string | null
+          pdf_storage_path?: string | null
+          placeholders?: Json | null
+          raw_arabic_text?: string | null
+          template_type?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          handlebars_content?: string | null
+          id?: string
+          is_app_template?: boolean
+          lawyer_id?: string | null
+          pdf_storage_path?: string | null
+          placeholders?: Json | null
+          raw_arabic_text?: string | null
+          template_type?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "templates_lawyer_id_fkey"
+            columns: ["lawyer_id"]
+            isOneToOne: false
+            referencedRelation: "lawyers"
             referencedColumns: ["id"]
           },
         ]

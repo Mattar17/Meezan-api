@@ -1,4 +1,5 @@
 export default function adminOnly(req: any, res: any, next: any) {
+  console.log(req.token)
   if (!req.token) {
     return res
       .status(401)

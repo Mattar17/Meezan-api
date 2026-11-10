@@ -23,4 +23,3 @@ router.get("/subscription_requests/:requestId", verifyToken, adminOnly, GetSubsc
 router.post("/subscription_requests/:requestId", verifyToken, adminOnly, AnswerSubscriptionRequest);
 
 export default router;
-

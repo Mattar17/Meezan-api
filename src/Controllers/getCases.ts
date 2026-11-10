@@ -1,4 +1,4 @@
-import CaseModel from "../Models/Case.js";
+const CaseModel: any = {};
 import { type Request, type Response } from "express";
 import logger from "../utils/logger.js";
 
