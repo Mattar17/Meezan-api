@@ -4,11 +4,28 @@ import fs from "fs";
 import path from "path";
 // @ts-ignore
 import pkg from "arabic-persian-reshaper";
-// @ts-ignore
-import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import "../utils/canvasPolyfill.js";
 import logger from "../utils/logger.js";
 
 const { ArabicShaper } = pkg;
+
+let cachedPdfJs: any = null;
+
+/**
+ * Safely loads pdfjs-dist dynamically with canvas polyfills initialized.
+ * Avoids top-level evaluation crashes on serverless environments like Vercel.
+ */
+async function getPdfJs(): Promise<any> {
+  if (cachedPdfJs) return cachedPdfJs;
+  try {
+    // @ts-ignore
+    cachedPdfJs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    return cachedPdfJs;
+  } catch (err) {
+    logger.error(`[pdfLibService] Failed to dynamically load pdfjs-dist: ${err}`);
+    throw err;
+  }
+}
 
 /**
  * Converts Eastern Arabic digits (٠-٩) to Western Arabic digits (0-9).
@@ -275,6 +292,7 @@ export async function autoDetectPlaceholderCoordinates(
   targets: Array<{ key: string; originalText?: string }>
 ): Promise<CoordinatePlaceholder[]> {
   try {
+    const pdfjs = await getPdfJs();
     const loadingTask = pdfjs.getDocument({ data: new Uint8Array(pdfBuffer) });
     const doc = await loadingTask.promise;
     const detected: CoordinatePlaceholder[] = [];

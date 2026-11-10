@@ -1,3 +1,4 @@
+import "./utils/canvasPolyfill.js";
 import express, { type Request, type Response } from "express";
 import mongoose from "mongoose";
 const app = express();

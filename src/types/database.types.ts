@@ -888,8 +888,33 @@ export type Database = {
           },
         ]
       }
+      template_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       templates: {
         Row: {
+          category_id: string | null
           created_at: string
           handlebars_content: string | null
           id: string
@@ -902,6 +927,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          category_id?: string | null
           created_at?: string
           handlebars_content?: string | null
           id?: string
@@ -914,6 +940,7 @@ export type Database = {
           title: string
         }
         Update: {
+          category_id?: string | null
           created_at?: string
           handlebars_content?: string | null
           id?: string
@@ -926,6 +953,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "templates_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "template_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "templates_lawyer_id_fkey"
             columns: ["lawyer_id"]

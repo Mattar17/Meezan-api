@@ -7,7 +7,12 @@ import {
   GenerateDocument,
   CreateAppTemplate,
   GetAdminAppTemplates,
+  UpdateAppTemplate,
   DeleteAppTemplate,
+  GetAllTemplateCategories,
+  CreateTemplateCategory,
+  UpdateTemplateCategory,
+  DeleteTemplateCategory,
   GetLawyerLogos,
   DeleteLawyerLogo,
 } from "../Controllers/templates.controller.js";
@@ -18,10 +23,22 @@ import adminOnly from "../middlewares/adminOnly.js";
 const router = express.Router();
 
 /**
+ * Template Categories routes
+ */
+// Authenticated: get all categories (Lawyers + Admins)
+router.get("/template-categories", verifyToken, GetAllTemplateCategories);
+
+// Admin only: Category management
+router.post("/admin/template-categories", verifyToken, adminOnly, CreateTemplateCategory);
+router.put("/admin/template-categories/:id", verifyToken, adminOnly, UpdateTemplateCategory);
+router.delete("/admin/template-categories/:id", verifyToken, adminOnly, DeleteTemplateCategory);
+
+/**
  * Admin App Templates routes
  */
 router.post("/admin/app-templates", verifyToken, adminOnly, UploadDocument.single("file"), CreateAppTemplate);
 router.get("/admin/app-templates", verifyToken, adminOnly, GetAdminAppTemplates);
+router.put("/admin/app-templates/:id", verifyToken, adminOnly, UpdateAppTemplate);
 router.delete("/admin/app-templates/:id", verifyToken, adminOnly, DeleteAppTemplate);
 
 /**

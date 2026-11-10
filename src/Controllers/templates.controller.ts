@@ -396,6 +396,12 @@ Follow these guidelines strictly:
     }
 
     // 4. Save template in database
+    const rawCategoryId = req.body.category_id || req.body.categoryId;
+    const categoryId =
+      rawCategoryId && typeof rawCategoryId === "string" && rawCategoryId.trim() && rawCategoryId !== "null" && rawCategoryId !== "undefined"
+        ? rawCategoryId.trim()
+        : null;
+
     const { data, error } = await supabase
       .from("templates")
       .insert([
@@ -407,9 +413,10 @@ Follow these guidelines strictly:
           lawyer_id: lawyerId !== "general" ? lawyerId : null,
           pdf_storage_path: pdfStoragePath,
           template_type: templateType,
+          category_id: categoryId,
         },
       ])
-      .select()
+      .select("*, template_categories(id, name, description)")
       .single();
 
     if (error) {
@@ -432,11 +439,16 @@ Follow these guidelines strictly:
 export async function GetAllTemplates(req: AuthRequest, res: Response) {
   try {
     const lawyerId = req.token?.lawyer_id;
+    const categoryId = (req.query.categoryId || req.query.category_id) as string | undefined;
 
     let query = supabase
       .from("templates")
-      .select("id, title, placeholders, template_type, pdf_storage_path, is_app_template, lawyer_id, created_at")
+      .select("id, title, placeholders, template_type, pdf_storage_path, is_app_template, lawyer_id, category_id, created_at, template_categories(id, name, description)")
       .order("created_at", { ascending: false });
+
+    if (categoryId && typeof categoryId === "string" && categoryId !== "all") {
+      query = query.eq("category_id", categoryId);
+    }
 
     if (lawyerId) {
       query = query.or(`lawyer_id.eq.${lawyerId},is_app_template.eq.true,lawyer_id.is.null`);
@@ -455,10 +467,15 @@ export async function GetAllTemplates(req: AuthRequest, res: Response) {
     const appTemplates: any[] = [];
 
     for (const t of data || []) {
+      const templateItem = {
+        ...t,
+        category: t.template_categories || null,
+      };
+
       if (t.is_app_template || !t.lawyer_id) {
-        appTemplates.push(t);
+        appTemplates.push(templateItem);
       } else if (lawyerId && t.lawyer_id === lawyerId) {
-        myTemplates.push(t);
+        myTemplates.push(templateItem);
       }
     }
 
@@ -627,6 +644,12 @@ export async function CreateAppTemplate(req: AuthRequest, res: Response) {
     }
 
     // Insert into database with handlebars_content and template_type = "html"
+    const rawCategoryId = req.body.category_id || req.body.categoryId;
+    const categoryId =
+      rawCategoryId && typeof rawCategoryId === "string" && rawCategoryId.trim() && rawCategoryId !== "null" && rawCategoryId !== "undefined"
+        ? rawCategoryId.trim()
+        : null;
+
     const { data, error } = await supabase
       .from("templates")
       .insert([
@@ -639,9 +662,10 @@ export async function CreateAppTemplate(req: AuthRequest, res: Response) {
           pdf_storage_path: pdfStoragePath,
           template_type: handlebarsContent ? "html" : "pdf",
           is_app_template: true,
+          category_id: categoryId,
         },
       ])
-      .select()
+      .select("*, template_categories(id, name, description)")
       .single();
 
     if (error) {
@@ -662,15 +686,23 @@ export async function CreateAppTemplate(req: AuthRequest, res: Response) {
 }
 
 /**
- * List all app templates (Admin view)
+ * List all app templates (Admin view, optional category filter)
  */
 export async function GetAdminAppTemplates(req: AuthRequest, res: Response) {
   try {
-    const { data, error } = await supabase
+    const categoryId = (req.query.categoryId || req.query.category_id) as string | undefined;
+
+    let query = supabase
       .from("templates")
-      .select("*")
+      .select("*, template_categories(id, name, description)")
       .eq("is_app_template", true)
       .order("created_at", { ascending: false });
+
+    if (categoryId && typeof categoryId === "string" && categoryId !== "all") {
+      query = query.eq("category_id", categoryId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       logger.error(`[GetAdminAppTemplates] fetch error: ${error.message}`);
@@ -681,6 +713,242 @@ export async function GetAdminAppTemplates(req: AuthRequest, res: Response) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`[GetAdminAppTemplates] error: ${message}`);
+    return res.status(500).json({ success: false, message: "حدث خطأ في الخادم" });
+  }
+}
+
+/**
+ * Update an app template (Admin view - title, category_id, placeholders)
+ */
+export async function UpdateAppTemplate(req: AuthRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, message: "معرف القالب مطلوب" });
+    }
+
+    const { title, category_id, categoryId, placeholders } = req.body;
+    const catId = category_id !== undefined ? category_id : categoryId;
+
+    const updatePayload: any = {};
+    if (title !== undefined) {
+      if (typeof title !== "string" || !title.trim()) {
+        return res.status(400).json({ success: false, message: "عنوان القالب غير صحيح" });
+      }
+      updatePayload.title = title.trim();
+    }
+
+    if (catId !== undefined) {
+      updatePayload.category_id =
+        catId && typeof catId === "string" && catId.trim() && catId !== "null" && catId !== "undefined"
+          ? catId.trim()
+          : null;
+    }
+
+    if (placeholders !== undefined && Array.isArray(placeholders)) {
+      updatePayload.placeholders = placeholders;
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      return res.status(400).json({ success: false, message: "لا توجد بيانات لتحديثها" });
+    }
+
+    const { data, error } = await supabase
+      .from("templates")
+      .update(updatePayload)
+      .eq("id", id)
+      .eq("is_app_template", true)
+      .select("*, template_categories(id, name, description)")
+      .single();
+
+    if (error) {
+      logger.error(`[UpdateAppTemplate] update error: ${error.message}`);
+      return res.status(500).json({ success: false, message: "فشل تحديث قالب التطبيق" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "تم تحديث قالب التطبيق بنجاح",
+      data,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[UpdateAppTemplate] error: ${message}`);
+    return res.status(500).json({ success: false, message: "حدث خطأ في الخادم" });
+  }
+}
+
+/**
+ * List all template categories (Public/Authenticated)
+ */
+export async function GetAllTemplateCategories(req: AuthRequest, res: Response) {
+  try {
+    const { data, error } = await supabase
+      .from("template_categories")
+      .select("id, name, description, created_at, updated_at, templates(count)")
+      .order("name", { ascending: true });
+
+    if (error) {
+      logger.error(`[GetAllTemplateCategories] fetch error: ${error.message}`);
+      return res.status(500).json({ success: false, message: "فشل تحميل أقسام القوالب" });
+    }
+
+    const categories = (data || []).map((cat: any) => ({
+      id: cat.id,
+      name: cat.name,
+      description: cat.description,
+      created_at: cat.created_at,
+      updated_at: cat.updated_at,
+      templatesCount: Array.isArray(cat.templates) && cat.templates[0] ? cat.templates[0].count : 0,
+    }));
+
+    return res.status(200).json({ success: true, data: categories });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[GetAllTemplateCategories] error: ${message}`);
+    return res.status(500).json({ success: false, message: "حدث خطأ في الخادم" });
+  }
+}
+
+/**
+ * Create a template category (Admin only)
+ */
+export async function CreateTemplateCategory(req: AuthRequest, res: Response) {
+  try {
+    const { name, description } = req.body;
+
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "اسم القسم مطلوب ويجب أن يكون نصاً صالحاً",
+      });
+    }
+
+    const trimmedName = name.trim();
+    const trimmedDesc = typeof description === "string" && description.trim() ? description.trim() : null;
+
+    const { data, error } = await supabase
+      .from("template_categories")
+      .insert([
+        {
+          name: trimmedName,
+          description: trimmedDesc,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "23505") {
+        return res.status(409).json({
+          success: false,
+          message: "هذا القسم موجود بالفعل",
+        });
+      }
+      logger.error(`[CreateTemplateCategory] insert error: ${error.message}`);
+      return res.status(500).json({
+        success: false,
+        message: `فشل إنشاء قسم القوالب: ${error.message}`,
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "تم إنشاء قسم القوالب بنجاح",
+      data,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[CreateTemplateCategory] error: ${message}`);
+    return res.status(500).json({ success: false, message: "حدث خطأ في الخادم" });
+  }
+}
+
+/**
+ * Update a template category (Admin only)
+ */
+export async function UpdateTemplateCategory(req: AuthRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, message: "معرف القسم مطلوب" });
+    }
+
+    const { name, description } = req.body;
+
+    if (name === undefined && description === undefined) {
+      return res.status(400).json({ success: false, message: "لا توجد بيانات لتحديثها" });
+    }
+
+    const updatePayload: { name?: string; description?: string | null; updated_at?: string } = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (name !== undefined) {
+      if (typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ success: false, message: "اسم القسم غير صحيح" });
+      }
+      updatePayload.name = name.trim();
+    }
+
+    if (description !== undefined) {
+      updatePayload.description = typeof description === "string" && description.trim() ? description.trim() : null;
+    }
+
+    const { data, error } = await supabase
+      .from("template_categories")
+      .update(updatePayload)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "23505") {
+        return res.status(409).json({ success: false, message: "اسم هذا القسم مستخدم بالفعل" });
+      }
+      logger.error(`[UpdateTemplateCategory] update error: ${error.message}`);
+      return res.status(500).json({ success: false, message: "فشل تحديث قسم القوالب" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "تم تحديث قسم القوالب بنجاح",
+      data,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[UpdateTemplateCategory] error: ${message}`);
+    return res.status(500).json({ success: false, message: "حدث خطأ في الخادم" });
+  }
+}
+
+/**
+ * Delete a template category (Admin only)
+ */
+export async function DeleteTemplateCategory(req: AuthRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, message: "معرف القسم مطلوب" });
+    }
+
+    const { error } = await supabase
+      .from("template_categories")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      logger.error(`[DeleteTemplateCategory] delete error: ${error.message}`);
+      return res.status(500).json({ success: false, message: "فشل حذف قسم القوالب" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "تم حذف قسم القوالب بنجاح",
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[DeleteTemplateCategory] error: ${message}`);
     return res.status(500).json({ success: false, message: "حدث خطأ في الخادم" });
   }
 }
@@ -809,7 +1077,7 @@ export async function GetTemplateById(req: AuthRequest, res: Response) {
 
     const { data, error } = await supabase
       .from("templates")
-      .select("*")
+      .select("*, template_categories(id, name, description)")
       .eq("id", id)
       .single();
 
