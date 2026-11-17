@@ -98,6 +98,7 @@ export interface CoordinatePlaceholder {
   page?: number;
   x?: number;
   maxX?: number;
+  leftBound?: number;
   y?: number;
   fontSize?: number;
   clearWidth?: number;
@@ -136,6 +137,7 @@ function cleanArabicKey(str: string): string {
     .replace(/[يى]/g, "ي")
     .replace(/[أإآا]/g, "ا")
     .replace(/[ةه]/g, "ه")
+    .replace(/ا+/g, "ا")
     .replace(/\s+/g, "")
     .trim();
 }
@@ -303,25 +305,19 @@ export async function autoDetectPlaceholderCoordinates(
       const content = await page.getTextContent();
       const items = content.items as any[];
 
-      // Sort items by vertical position (descending), then horizontal (ascending)
-      const sorted = [...items].filter((it) => it.str && it.str.trim()).sort((a, b) => {
-        const dy = b.transform[5] - a.transform[5];
-        if (Math.abs(dy) > 3.5) return dy;
-        return a.transform[4] - b.transform[4];
-      });
-
-      // Group items into visual lines
+      // Group items into visual lines preserving natural stream reading order
       const lines: any[][] = [];
       let currentLine: any[] = [];
       let currentY: number | null = null;
 
-      for (const it of sorted) {
+      const filteredItems = (content.items as any[]).filter((it) => it.str && it.str.trim());
+      for (const it of filteredItems) {
         const y = it.transform[5];
         if (currentY === null || Math.abs(currentY - y) <= 3.5) {
           currentLine.push(it);
           currentY = y;
         } else {
-          lines.push(currentLine);
+          if (currentLine.length) lines.push(currentLine);
           currentLine = [it];
           currentY = y;
         }
@@ -340,6 +336,16 @@ export async function autoDetectPlaceholderCoordinates(
             charMap.push({ item, char: s[cIdx] });
             rawStr += s[cIdx];
           }
+          if (itIdx < lineItems.length - 1) {
+            const next = lineItems[itIdx + 1];
+            // In Arabic RTL stream order: item is to the right of next
+            // A positive gap means empty visual space between items
+            const gap = item.transform[4] - (next.transform[4] + next.width);
+            if (gap > 2.0 || gap < -5.0) {
+              charMap.push({ item: null as any, char: " " });
+              rawStr += " ";
+            }
+          }
         }
 
         let normStr = "";
@@ -352,35 +358,42 @@ export async function autoDetectPlaceholderCoordinates(
           }
         }
 
-        // Regex matches {{...}}, }}...{{, or {...}
-        const regex = /(\{\{([^{}]+)\}\})|(\}\}([^\{\}]+)\{\{)|(\{[^{}]+\})/g;
+        // Regex matches {{...}}, }}...{{, {...}, or unbracketed Arabic snake_case words (with optional spaces around _)
+        const regex = /(\{\{([^{}]+)\}\})|(\}\}([^\{\}]+)\{\{)|(\{[^{}]+\})|((?<![\u0600-\u06FFa-zA-Z0-9_{}])[\u0600-\u06FF]+(?:\s*_\s*[\u0600-\u06FF0-9]+)+(?![\u0600-\u06FFa-zA-Z0-9_}]))/g;
         let m: RegExpExecArray | null;
 
         while ((m = regex.exec(normStr)) !== null) {
           const fullMatch = m[0];
-          const innerKey = (m[2] || m[4] || fullMatch.replace(/[{}]/g, "")).trim();
+          const rawKey = (m[2] || m[4] || m[6] || fullMatch.replace(/[{}]/g, "")).trim();
+          const cleanKey = rawKey.replace(/^[\/\\_\s{}]+/, "").replace(/[\/\\_\s{}]+$/, "").replace(/\s+/g, "_").replace(/_+/g, "_");
+          if (!cleanKey) continue;
+
           const startCharIdx = m.index;
           const endCharIdx = m.index + fullMatch.length - 1;
 
-          if (!normCharMap[startCharIdx] || !normCharMap[endCharIdx]) continue;
+          // Only take items that actually belong to the placeholder characters
+          const matchedItems = normCharMap.slice(startCharIdx, endCharIdx + 1).map((c) => c?.item).filter(Boolean);
+          if (matchedItems.length === 0) continue;
 
-          const startItem = normCharMap[startCharIdx].item;
-          const endItem = normCharMap[endCharIdx].item;
+          const allX = matchedItems.map((it) => it.transform[4]);
+          const allMaxX = matchedItems.map((it) => it.transform[4] + (it.width || 0));
+          const minX = Math.min(...allX);
+          const maxX = Math.max(...allMaxX);
+          const y = matchedItems[0].transform[5];
 
-          const x = Math.min(startItem.transform[4], endItem.transform[4]);
-          const maxX = Math.max(
-            startItem.transform[4] + (startItem.width || 0),
-            endItem.transform[4] + (endItem.width || 0)
-          );
-          const y = startItem.transform[5];
-          const clearWidth = maxX - x;
-          const clearHeight = Math.max(
-            ...normCharMap.slice(startCharIdx, endCharIdx + 1).map((c) => c.item.height || 12)
-          );
+          // Determine the nearest neighbor to the left in this visual line
+          const leftNeighbors = lineItems.filter((it) => (it.transform[4] + it.width) <= minX + 1);
+          let leftBound = 90;
+          if (leftNeighbors.length > 0) {
+            const nearestLeft = leftNeighbors.reduce((prev, curr) => 
+              (curr.transform[4] + curr.width > prev.transform[4] + prev.width) ? curr : prev
+            );
+            leftBound = nearestLeft.transform[4] + nearestLeft.width + 4;
+          }
 
-          let resolvedKey = innerKey;
+          let resolvedKey = cleanKey;
           if (targets && targets.length > 0) {
-            const bestMatch = findBestTargetKey(innerKey, targets);
+            const bestMatch = findBestTargetKey(cleanKey, targets);
             if (bestMatch) {
               resolvedKey = bestMatch.key;
               matchedTargets.add(bestMatch.key);
@@ -394,12 +407,13 @@ export async function autoDetectPlaceholderCoordinates(
             key: resolvedKey,
             originalText: fullMatch,
             page: pageNum - 1,
-            x,
-            maxX,
-            y,
-            fontSize: clearHeight,
-            clearWidth,
-            clearHeight,
+            x: minX,
+            maxX: maxX,
+            leftBound: leftBound,
+            y: y,
+            fontSize: Math.max(...matchedItems.map((c) => c.height || 12)),
+            clearWidth: maxX - minX,
+            clearHeight: Math.max(...matchedItems.map((c) => c.height || 14)),
           });
         }
       }
@@ -584,7 +598,9 @@ export async function fillPdfDocument(params: {
 
   for (const [key, val] of Object.entries(formValues)) {
     if (val !== undefined && val !== null && val !== "") {
-      const alreadyHasCoord = activeCoordinates.some((c) => c.key === key && typeof c.x === "number");
+      const alreadyHasCoord = activeCoordinates.some(
+        (c) => c.key === key && typeof c.x === "number" && typeof c.maxX === "number"
+      );
       if (!alreadyHasCoord) {
         // 1. Look up if template.placeholders has this key with an originalText
         let orig: string | undefined = undefined;
@@ -617,39 +633,68 @@ export async function fillPdfDocument(params: {
   // 4. Apply text replacements at coordinates
   for (const item of activeCoordinates) {
     const key = item.key;
-    const rawValue = formValues[key];
+    let rawValue = formValues[key];
+    if (rawValue === undefined || rawValue === null || rawValue === "") {
+      // Try fuzzy normalized key match (e.g. يوم_الأسبوع vs يوم_األسبوع)
+      const cItemKey = cleanArabicKey(key);
+      for (const [fKey, fVal] of Object.entries(formValues)) {
+        if (cleanArabicKey(fKey) === cItemKey) {
+          rawValue = fVal;
+          break;
+        }
+      }
+    }
 
     if (rawValue !== undefined && rawValue !== null && rawValue !== "" && typeof item.x === "number" && typeof item.y === "number") {
       const pageIndex = typeof item.page === "number" ? item.page : 0;
       const page = pages[pageIndex];
 
       if (page) {
-        // Use full font size matching the original PDF document
-        const baseFontSize = item.fontSize && item.fontSize >= 10 ? item.fontSize : 11;
+        const baseFontSize = item.fontSize && item.fontSize >= 10 ? item.fontSize : 12;
         const shaped = shapeArabicText(String(rawValue));
         const textColor = item.color
           ? rgb(item.color.r, item.color.g, item.color.b)
-          : rgb(0.1, 0.1, 0.1);
+          : rgb(0.08, 0.08, 0.08);
 
-        // Erase old placeholder or original text with a clean white rectangle covering brackets and descenders
-        const clearW = (item.clearWidth || 60) + 6;
-        const clearH = (item.clearHeight || baseFontSize + 4) + 6;
+        const eraseX = item.x - 1;
+        const eraseWidth = item.maxX && typeof item.x === "number"
+          ? (item.maxX - item.x) + 2
+          : (item.clearWidth || 60) + 2;
+
+        // 1. Clean whiteout: erase ONLY the placeholder characters between item.x and item.maxX
         page.drawRectangle({
-          x: item.x - 3,
-          y: item.y - 3.5,
-          width: clearW,
-          height: clearH,
+          x: eraseX,
+          y: item.y - 3,
+          width: eraseWidth,
+          height: (item.clearHeight || baseFontSize) + 5,
           color: rgb(1, 1, 1),
         });
 
-        const textWidth = arabicFont.widthOfTextAtSize(shaped, baseFontSize);
+        // 2. Compute available horizontal space between leftBound and maxX
         const maxX = item.maxX || (item.x + (item.clearWidth || 60));
-        const drawX = Math.max(item.x - 4, maxX - textWidth);
+        const leftBound = typeof item.leftBound === "number" ? item.leftBound : item.x;
+        const availableWidth = Math.max(maxX - leftBound, maxX - item.x);
+
+        // 3. Auto-scale font size if text exceeds available horizontal space
+        let fSize = baseFontSize;
+        let tWidth = arabicFont.widthOfTextAtSize(shaped, fSize);
+        while (tWidth > availableWidth - 2 && fSize > 7.5) {
+          fSize -= 0.5;
+          tWidth = arabicFont.widthOfTextAtSize(shaped, fSize);
+        }
+
+        // 4. In Arabic (RTL), text ends at maxX (the right edge of the gap), so:
+        // drawX = maxX - tWidth - 2 (with 2pt margin before the right label)
+        // and must not go left of leftBound:
+        let drawX = maxX - tWidth - 2;
+        if (drawX < leftBound) {
+          drawX = leftBound;
+        }
 
         page.drawText(shaped, {
           x: drawX,
           y: item.y,
-          size: baseFontSize,
+          size: fSize,
           font: arabicFont,
           color: textColor,
         });

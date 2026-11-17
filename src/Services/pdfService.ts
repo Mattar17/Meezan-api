@@ -1,6 +1,7 @@
 import puppeteer, { Browser } from "puppeteer";
 import fs from "fs";
 import os from "os";
+import path from "path";
 import logger from "../utils/logger.js";
 
 let browserInstance: Browser | null = null;
@@ -58,9 +59,12 @@ async function getBrowser(): Promise<Browser> {
     const executablePath = await findExecutablePath();
     logger.info(`[pdfService] Launching browser (executablePath: ${executablePath || "puppeteer-default"})...`);
 
+    const tempProfileDir = path.join(os.tmpdir(), `lawsync_puppeteer_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+
     browserInstance = await puppeteer.launch({
       headless: true,
       executablePath,
+      userDataDir: tempProfileDir,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",

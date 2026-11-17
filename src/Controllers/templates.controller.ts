@@ -8,6 +8,14 @@ import { AuthRequest } from "../types/AuthRequest.js";
 import { generatePdfFromHtml } from "../Services/pdfService.js";
 import { fillPdfDocument, inspectPdfFormFields, autoDetectPlaceholderCoordinates } from "../Services/pdfLibService.js";
 import { convertPdfBufferToHtmlTemplate, sanitizeHandlebarsTemplate } from "../Services/templateHtmlService.js";
+import {
+  isDocxBuffer,
+  extractPlaceholdersFromDocx,
+  fillDocxTemplate,
+  convertDocxToPdf,
+  convertDocxToHtml,
+  normalizeArabicKey,
+} from "../Services/docxService.js";
 
 // Prevent Handlebars from throwing "Missing helper" when malformed tags like {{اسم _ المحامي}} are encountered
 Handlebars.registerHelper("helperMissing", function () {
@@ -199,63 +207,92 @@ export async function CreateTemplate(req: AuthRequest, res: Response) {
   try {
     let rawArabicText = "";
     let pdfStoragePath: string | null = null;
-    let templateType: "pdf" | "html" = "html";
+    let templateType: "pdf" | "html" | "docx" = "html";
     let acroFieldNames: string[] = [];
 
     const lawyerId = req.token?.lawyer_id || "general";
 
-    // 1. Process uploaded PDF file or text body
+    // 1. Process uploaded Word (.docx), PDF file, or text body
     if (req.file) {
+      const isDocx =
+        isDocxBuffer(req.file.buffer) ||
+        req.file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        req.file.originalname.toLowerCase().endsWith(".docx");
       const isPdf =
         req.file.mimetype === "application/pdf" ||
         req.file.originalname.toLowerCase().endsWith(".pdf");
-      if (!isPdf) {
+
+      if (!isDocx && !isPdf) {
         return res.status(400).json({
           success: false,
-          message: "يجب أن يكون الملف المرفوع بصيغة PDF",
+          message: "يجب أن يكون الملف المرفوع بصيغة Word (.docx) أو PDF",
         });
       }
 
-      templateType = "pdf";
-
-      // Save master PDF file to 'templates' bucket under lawyerId folder
       const timestamp = Date.now();
-      const sanitizedName = (req.file.originalname || "template.pdf").replace(/[^a-zA-Z0-9._-]/g, "_");
-      pdfStoragePath = `${lawyerId}/${timestamp}_${sanitizedName}`;
 
-      logger.info(
-        `[CreateTemplate] Uploading master PDF template to 'templates' bucket: ${pdfStoragePath} (${req.file.size} bytes)`
-      );
+      if (isDocx) {
+        templateType = "docx";
+        const sanitizedName = (req.file.originalname || "template.docx").replace(/[^a-zA-Z0-9._-]/g, "_");
+        pdfStoragePath = `${lawyerId}/${timestamp}_${sanitizedName}`;
 
-      const { error: uploadMasterError } = await supabase.storage
-        .from("templates")
-        .upload(pdfStoragePath, req.file.buffer, {
-          contentType: "application/pdf",
-          upsert: true,
-        });
-
-      if (uploadMasterError) {
-        logger.error(`[CreateTemplate] Failed to upload PDF template to 'templates' bucket: ${uploadMasterError.message}`);
-        return res.status(500).json({
-          success: false,
-          message: `فشل رفع ملف القالب إلى وحدة التخزين (templates): ${uploadMasterError.message}`,
-        });
-      }
-
-      // Check if the PDF has fillable AcroForm fields
-      const formInfo = await inspectPdfFormFields(req.file.buffer);
-      if (formInfo.hasForm) {
-        acroFieldNames = formInfo.fieldNames;
         logger.info(
-          `[CreateTemplate] Detected ${acroFieldNames.length} AcroForm fields in PDF: ${acroFieldNames.join(", ")}`
+          `[CreateTemplate] Uploading master Word DOCX template to 'templates' bucket: ${pdfStoragePath} (${req.file.size} bytes)`
         );
-      }
 
-      // Attempt text extraction for searchability and AI placeholder assistance
-      try {
-        rawArabicText = await extractTextFromPdf(req.file.buffer);
-      } catch (extractErr) {
-        logger.warn(`[CreateTemplate] Could not extract text from PDF: ${extractErr}`);
+        const { error: uploadDocxError } = await supabase.storage
+          .from("templates")
+          .upload(pdfStoragePath, req.file.buffer, {
+            contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            upsert: true,
+          });
+
+        if (uploadDocxError) {
+          logger.error(`[CreateTemplate] Failed to upload DOCX template: ${uploadDocxError.message}`);
+          return res.status(500).json({
+            success: false,
+            message: `فشل رفع ملف القالب (Word) إلى وحدة التخزين (templates): ${uploadDocxError.message}`,
+          });
+        }
+      } else {
+        templateType = "pdf";
+        const sanitizedName = (req.file.originalname || "template.pdf").replace(/[^a-zA-Z0-9._-]/g, "_");
+        pdfStoragePath = `${lawyerId}/${timestamp}_${sanitizedName}`;
+
+        logger.info(
+          `[CreateTemplate] Uploading master PDF template to 'templates' bucket: ${pdfStoragePath} (${req.file.size} bytes)`
+        );
+
+        const { error: uploadMasterError } = await supabase.storage
+          .from("templates")
+          .upload(pdfStoragePath, req.file.buffer, {
+            contentType: "application/pdf",
+            upsert: true,
+          });
+
+        if (uploadMasterError) {
+          logger.error(`[CreateTemplate] Failed to upload PDF template to 'templates' bucket: ${uploadMasterError.message}`);
+          return res.status(500).json({
+            success: false,
+            message: `فشل رفع ملف القالب إلى وحدة التخزين (templates): ${uploadMasterError.message}`,
+          });
+        }
+
+        // Check if the PDF has fillable AcroForm fields
+        const formInfo = await inspectPdfFormFields(req.file.buffer);
+        if (formInfo.hasForm) {
+          acroFieldNames = formInfo.fieldNames;
+          logger.info(
+            `[CreateTemplate] Detected ${acroFieldNames.length} AcroForm fields in PDF: ${acroFieldNames.join(", ")}`
+          );
+        }
+
+        // Attempt text extraction for searchability and AI placeholder assistance
+        try {
+          rawArabicText = await extractTextFromPdf(req.file.buffer);
+        } catch (extractErr) {
+          logger.warn(`[CreateTemplate] Could not extract text from PDF: ${extractErr}`);
+        }
       }
     } else if (
       req.body.rawArabicText &&
@@ -306,19 +343,39 @@ export async function CreateTemplate(req: AuthRequest, res: Response) {
 
     let handlebarsContent: string | null = null;
 
-    // 4. Automatically convert uploaded PDF to 100% semantic Handlebars HTML template
+    // 4. Automatically convert uploaded Word or PDF to semantic HTML and extract placeholders
     if (req.file) {
-      try {
-        const conv = await convertPdfBufferToHtmlTemplate(req.file.buffer, title);
-        handlebarsContent = conv.handlebarsHtml;
-        rawArabicText = conv.rawText;
-        if (!placeholders || (Array.isArray(placeholders) && placeholders.length === 0)) {
-          placeholders = conv.placeholders;
+      if (templateType === "docx") {
+        try {
+          const docxPlaceholders = extractPlaceholdersFromDocx(req.file.buffer);
+          if (!placeholders || (Array.isArray(placeholders) && placeholders.length === 0)) {
+            placeholders = docxPlaceholders;
+          }
+          handlebarsContent = await convertDocxToHtml(req.file.buffer, title);
+          logger.info(`[CreateTemplate] Extracted ${docxPlaceholders.length} placeholder(s) from Word template.`);
+        } catch (docxErr) {
+          logger.warn(`[CreateTemplate] Word template processing warning: ${docxErr}`);
         }
-        templateType = "html";
-        logger.info(`[CreateTemplate] Auto-converted PDF to Handlebars HTML successfully.`);
-      } catch (convErr) {
-        logger.warn(`[CreateTemplate] PDF to HTML auto-conversion warning: ${convErr}`);
+      } else {
+        try {
+          const explicitKeys = Array.isArray(placeholders)
+            ? placeholders.map((p: any) => (typeof p === "string" ? p : p.key)).filter(Boolean)
+            : [];
+          const conv = await convertPdfBufferToHtmlTemplate(req.file.buffer, title, explicitKeys);
+          handlebarsContent = conv.handlebarsHtml;
+          rawArabicText = conv.rawText;
+          if (!placeholders || (Array.isArray(placeholders) && placeholders.length === 0)) {
+            placeholders = (conv.placeholders || []).filter((p) => {
+              if (!p || !p.key) return false;
+              const k = p.key.trim();
+              return k.length <= 35 && /^[\u0600-\u06FFa-zA-Z0-9_]+$/.test(k);
+            });
+          }
+          templateType = "html";
+          logger.info(`[CreateTemplate] Auto-converted PDF to Handlebars HTML successfully.`);
+        } catch (convErr) {
+          logger.warn(`[CreateTemplate] PDF to HTML auto-conversion warning: ${convErr}`);
+        }
       }
     }
 
@@ -412,7 +469,7 @@ Follow these guidelines strictly:
           placeholders: placeholders || [],
           lawyer_id: lawyerId !== "general" ? lawyerId : null,
           pdf_storage_path: pdfStoragePath,
-          template_type: templateType,
+          template_type: handlebarsContent ? "html" : "pdf",
           category_id: categoryId,
         },
       ])
@@ -505,18 +562,22 @@ export async function CreateAppTemplate(req: AuthRequest, res: Response) {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "يجب رفع ملف القالب بصيغة PDF في حقل 'file'",
+        message: "يجب رفع ملف القالب بصيغة Word (.docx) أو PDF في حقل 'file'",
       });
     }
 
+    const isDocx =
+      isDocxBuffer(req.file.buffer) ||
+      req.file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      req.file.originalname.toLowerCase().endsWith(".docx");
     const isPdf =
       req.file.mimetype === "application/pdf" ||
       req.file.originalname.toLowerCase().endsWith(".pdf");
 
-    if (!isPdf) {
+    if (!isDocx && !isPdf) {
       return res.status(400).json({
         success: false,
-        message: "يجب أن يكون الملف المرفوع بصيغة PDF",
+        message: "يجب أن يكون الملف المرفوع بصيغة Word (.docx) أو PDF",
       });
     }
 
@@ -534,26 +595,52 @@ export async function CreateAppTemplate(req: AuthRequest, res: Response) {
       });
     }
 
-    // Save master PDF to 'templates' bucket under app_templates folder
     const timestamp = Date.now();
-    const sanitizedName = (req.file.originalname || "app_template.pdf").replace(/[^a-zA-Z0-9._-]/g, "_");
-    const pdfStoragePath = `app_templates/${timestamp}_${sanitizedName}`;
+    let pdfStoragePath: string;
+    let templateType: "docx" | "pdf" | "html" = "pdf";
 
-    logger.info(`[CreateAppTemplate] Uploading master app template to 'templates' bucket: ${pdfStoragePath}`);
+    if (isDocx) {
+      templateType = "docx";
+      const sanitizedName = (req.file.originalname || "app_template.docx").replace(/[^a-zA-Z0-9._-]/g, "_");
+      pdfStoragePath = `app_templates/${timestamp}_${sanitizedName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("templates")
-      .upload(pdfStoragePath, req.file.buffer, {
-        contentType: "application/pdf",
-        upsert: true,
-      });
+      logger.info(`[CreateAppTemplate] Uploading master app Word DOCX template: ${pdfStoragePath}`);
 
-    if (uploadError) {
-      logger.error(`[CreateAppTemplate] Failed to upload PDF template: ${uploadError.message}`);
-      return res.status(500).json({
-        success: false,
-        message: `فشل رفع ملف القالب إلى وحدة التخزين (templates): ${uploadError.message}`,
-      });
+      const { error: uploadError } = await supabase.storage
+        .from("templates")
+        .upload(pdfStoragePath, req.file.buffer, {
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          upsert: true,
+        });
+
+      if (uploadError) {
+        logger.error(`[CreateAppTemplate] Failed to upload Word template: ${uploadError.message}`);
+        return res.status(500).json({
+          success: false,
+          message: `فشل رفع ملف القالب (Word) إلى وحدة التخزين (templates): ${uploadError.message}`,
+        });
+      }
+    } else {
+      templateType = "pdf";
+      const sanitizedName = (req.file.originalname || "app_template.pdf").replace(/[^a-zA-Z0-9._-]/g, "_");
+      pdfStoragePath = `app_templates/${timestamp}_${sanitizedName}`;
+
+      logger.info(`[CreateAppTemplate] Uploading master app template to 'templates' bucket: ${pdfStoragePath}`);
+
+      const { error: uploadError } = await supabase.storage
+        .from("templates")
+        .upload(pdfStoragePath, req.file.buffer, {
+          contentType: "application/pdf",
+          upsert: true,
+        });
+
+      if (uploadError) {
+        logger.error(`[CreateAppTemplate] Failed to upload PDF template: ${uploadError.message}`);
+        return res.status(500).json({
+          success: false,
+          message: `فشل رفع ملف القالب إلى وحدة التخزين (templates): ${uploadError.message}`,
+        });
+      }
     }
 
     // Parse placeholders from admin body if provided
@@ -601,49 +688,65 @@ export async function CreateAppTemplate(req: AuthRequest, res: Response) {
     }
 
     let placeholders: Array<{ key: string; label: string; type: string }> = [...adminPlaceholders];
-
-    // Check AcroForm fields
-    const formInfo = await inspectPdfFormFields(req.file.buffer);
-    if (placeholders.length === 0 && formInfo.hasForm && formInfo.fieldNames.length > 0) {
-      placeholders = formInfo.fieldNames.map((name: string) => ({
-        key: name.trim().replace(/\s+/g, "_"),
-        label: name.trim().replace(/_/g, " "),
-        type: name.includes("تاريخ") ? "date" : "text",
-      }));
-    }
-
-    // Automatically convert uploaded PDF to 100% semantic Handlebars HTML template
     let rawArabicText = "";
     let handlebarsContent: string | null = null;
-    try {
-      const conv = await convertPdfBufferToHtmlTemplate(req.file.buffer, title);
-      handlebarsContent = conv.handlebarsHtml;
-      rawArabicText = conv.rawText;
-      if (placeholders.length === 0) {
-        placeholders = conv.placeholders;
+
+    if (isDocx) {
+      const docxPlaceholders = extractPlaceholdersFromDocx(req.file.buffer);
+      if (adminPlaceholders.length > 0) {
+        placeholders = adminPlaceholders;
       } else {
-        // Prioritize admin-defined placeholders and merge any extra placeholders extracted by the parser
-        const existingKeys = new Set(placeholders.map((p) => p.key));
-        for (const convPh of conv.placeholders) {
-          if (!existingKeys.has(convPh.key)) {
-            placeholders.push(convPh);
-            existingKeys.add(convPh.key);
-          }
-        }
+        placeholders = docxPlaceholders;
       }
-      logger.info(
-        `[CreateAppTemplate] Auto-converted master PDF to Handlebars HTML with ${placeholders.length} placeholders.`
-      );
-    } catch (convErr) {
-      logger.error(`[CreateAppTemplate] Error converting PDF to HTML template: ${convErr}`);
+
       try {
-        rawArabicText = await extractTextFromPdf(req.file.buffer);
-      } catch (extractErr) {
-        logger.warn(`[CreateAppTemplate] Could not extract text from PDF: ${extractErr}`);
+        handlebarsContent = await convertDocxToHtml(req.file.buffer, title);
+        logger.info(`[CreateAppTemplate] Extracted ${placeholders.length} placeholder(s) from Word template.`);
+      } catch (docxErr) {
+        logger.warn(`[CreateAppTemplate] Word template HTML conversion warning: ${docxErr}`);
+      }
+    } else {
+      // Check AcroForm fields
+      const formInfo = await inspectPdfFormFields(req.file.buffer);
+      if (placeholders.length === 0 && formInfo.hasForm && formInfo.fieldNames.length > 0) {
+        placeholders = formInfo.fieldNames.map((name: string) => ({
+          key: name.trim().replace(/\s+/g, "_"),
+          label: name.trim().replace(/_/g, " "),
+          type: name.includes("تاريخ") ? "date" : "text",
+        }));
+      }
+
+      // Automatically convert uploaded PDF to 100% semantic Handlebars HTML template
+      try {
+        const explicitKeys = adminPlaceholders.map((p) => p.key);
+        const conv = await convertPdfBufferToHtmlTemplate(req.file.buffer, title, explicitKeys);
+        handlebarsContent = conv.handlebarsHtml;
+        rawArabicText = conv.rawText;
+        if (adminPlaceholders.length > 0) {
+          // When admin explicitly specifies placeholders, respect their exact authoritative list
+          placeholders = adminPlaceholders;
+        } else if (placeholders.length === 0) {
+          // Filter auto-extracted placeholders to ensure they are concise legal identifiers, not extracted sentences
+          placeholders = (conv.placeholders || []).filter((p) => {
+            if (!p || !p.key) return false;
+            const k = p.key.trim();
+            return k.length <= 35 && /^[\u0600-\u06FFa-zA-Z0-9_]+$/.test(k);
+          });
+        }
+        logger.info(
+          `[CreateAppTemplate] Auto-converted master PDF to Handlebars HTML with ${placeholders.length} placeholders.`
+        );
+      } catch (convErr) {
+        logger.error(`[CreateAppTemplate] Error converting PDF to HTML template: ${convErr}`);
+        try {
+          rawArabicText = await extractTextFromPdf(req.file.buffer);
+        } catch (extractErr) {
+          logger.warn(`[CreateAppTemplate] Could not extract text from PDF: ${extractErr}`);
+        }
       }
     }
 
-    // Insert into database with handlebars_content and template_type = "html"
+    // Insert into database with handlebars_content and template_type
     const rawCategoryId = req.body.category_id || req.body.categoryId;
     const categoryId =
       rawCategoryId && typeof rawCategoryId === "string" && rawCategoryId.trim() && rawCategoryId !== "null" && rawCategoryId !== "undefined"
@@ -1189,6 +1292,8 @@ export async function GenerateDocument(req: AuthRequest, res: Response) {
         normalizedFormValues[k] = v;
         const stripped = k.replace(/^(\{\{|\{|\[|\}\})/, "").replace(/(\}\}|\}|\]|\{\{)$/, "").trim();
         normalizedFormValues[stripped] = v;
+        normalizedFormValues[stripped.replace(/_/g, " ")] = v;
+        normalizedFormValues[stripped.replace(/\s+/g, "_")] = v;
       }
       // Provide bidirectional aliases for common Arabic spelling variants
       if (normalizedFormValues["مبلغ_الأتعاب"] && !normalizedFormValues["مبلغ_األتعاب"]) {
@@ -1202,6 +1307,12 @@ export async function GenerateDocument(req: AuthRequest, res: Response) {
       }
       if (normalizedFormValues["اسم_الموكل"]) {
         normalizedFormValues["اسم_كلاملو"] = normalizedFormValues["اسم_الموكل"];
+      }
+      if (normalizedFormValues["يوم_الاسبوع"]) {
+        normalizedFormValues["يوم_الأسبوع"] = normalizedFormValues["يوم_الاسبوع"];
+      }
+      if (normalizedFormValues["يوم_الأسبوع"]) {
+        normalizedFormValues["يوم_الاسبوع"] = normalizedFormValues["يوم_الأسبوع"];
       }
       formValues = normalizedFormValues;
     }
@@ -1325,9 +1436,12 @@ export async function GenerateDocument(req: AuthRequest, res: Response) {
     }
 
     // 2. Determine rendering strategy:
-    //    Priority 1 → handlebars_content exists → always use Handlebars + Puppeteer (best Arabic support).
-    //    Auto-upgrade → If legacy PDF template has no handlebars_content, convert it now so it renders with Puppeteer.
-    if (!template.handlebars_content && template.pdf_storage_path) {
+    const isDocxTemplate =
+      template.template_type === "docx" ||
+      (typeof template.pdf_storage_path === "string" && template.pdf_storage_path.toLowerCase().endsWith(".docx"));
+
+    // Auto-upgrade legacy PDF templates (skipping docx templates)
+    if (!template.handlebars_content && template.pdf_storage_path && !isDocxTemplate) {
       try {
         logger.info(
           `[GenerateDocument] Auto-generating Handlebars HTML for template "${template.title}" (${template.id})`
@@ -1338,7 +1452,10 @@ export async function GenerateDocument(req: AuthRequest, res: Response) {
 
         if (fileBlob && !downloadError) {
           const masterBuffer = Buffer.from(await fileBlob.arrayBuffer());
-          const conv = await convertPdfBufferToHtmlTemplate(masterBuffer, template.title);
+          const explicitKeys = Array.isArray(template.placeholders)
+            ? template.placeholders.map((p: any) => (typeof p === "string" ? p : p.key)).filter(Boolean)
+            : [];
+          const conv = await convertPdfBufferToHtmlTemplate(masterBuffer, template.title, explicitKeys);
           template.handlebars_content = conv.handlebarsHtml;
           template.template_type = "html";
 
@@ -1359,70 +1476,56 @@ export async function GenerateDocument(req: AuthRequest, res: Response) {
       }
     }
 
-    const useHandlebars = !!template.handlebars_content;
-    const usePdfLib = !useHandlebars && (!!template.pdf_storage_path || template.template_type === "pdf");
+    const hasMasterPdf = !!template.pdf_storage_path && !isDocxTemplate;
+    const hasCustomHtml = !!(body.customHtml || body.editedHtml || (body.html && !body.form ? body.html : null));
 
-    if (useHandlebars) {
-      logger.info(`[GenerateDocument] Rendering via Handlebars + Puppeteer for template: "${template.title}"`);
+    let filledDocxBase64: string | undefined = undefined;
+    let filledDocxBuffer: Buffer | null = null;
 
-      // Provide base64 data URI so Puppeteer embeds the logo directly without external network requests
-      if (logoBuffer) {
-        const mime = req.file?.mimetype || "image/png";
-        const logoDataUri = `data:${mime};base64,${logoBuffer.toString("base64")}`;
-        formValues.logo_url = logoDataUri;
-        formValues.logo = logoDataUri;
-      } else if (logoPublicUrl) {
-        formValues.logo_url = logoPublicUrl;
-        formValues.logo = logoPublicUrl;
-      } else {
-        formValues.logo_url = null;
-        formValues.logo = null;
+    if (isDocxTemplate) {
+      logger.info(
+        `[GenerateDocument] Rendering via DOCX Engine for Word template: ${template.pdf_storage_path}`
+      );
+
+      const { data: fileBlob, error: downloadError } = await supabase.storage
+        .from("templates")
+        .download(template.pdf_storage_path!);
+
+      if (downloadError || !fileBlob) {
+        logger.error(`[GenerateDocument] Error downloading Word template: ${downloadError?.message}`);
+        return res.status(500).json({
+          success: false,
+          message: `تعذر تحميل ملف القالب (Word) من وحدة التخزين (templates): ${downloadError?.message || "الملف غير موجود"}`,
+        });
       }
 
-      // If user modified the text directly in preview ("تعديل النص"), use their custom/edited HTML
-      const editedHtml = body.customHtml || body.editedHtml || (body.html && !body.form ? body.html : null);
-      if (editedHtml && typeof editedHtml === "string" && editedHtml.trim()) {
-        logger.info(`[GenerateDocument] Using user-edited HTML for template: "${template.title}"`);
-        finalHtml = sanitizeHandlebarsTemplate(editedHtml);
-      } else {
-        // Sanitize template HTML to fix malformed tags, tabs, and prevent helperMissing errors
-        const cleanTemplateContent = sanitizeHandlebarsTemplate(template.handlebars_content || "");
+      const masterBuffer = Buffer.from(await fileBlob.arrayBuffer());
 
-        // Self-heal template in Supabase asynchronously if changes were made
-        if (cleanTemplateContent !== template.handlebars_content) {
-          supabase
-            .from("templates")
-            .update({ handlebars_content: cleanTemplateContent })
-            .eq("id", template.id)
-            .then(({ error: patchErr }) => {
-              if (patchErr) logger.warn(`[GenerateDocument] Self-heal template warning: ${patchErr.message}`);
-              else logger.info(`[GenerateDocument] Self-healed template "${template.id}" in database.`);
-            });
-        }
+      // 1. Fill Word template natively via docxtemplater
+      filledDocxBuffer = fillDocxTemplate(masterBuffer, formValues);
+      filledDocxBase64 = `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${filledDocxBuffer.toString("base64")}`;
 
-        const compiledFunction = Handlebars.compile(cleanTemplateContent);
-        finalHtml = compiledFunction(formValues);
-      }
+      // 2. Convert to pristine vector PDF
+      pdfBuffer = await convertDocxToPdf(filledDocxBuffer, { docTitle: template.title });
 
       if (isPreview) {
         return res.status(200).json({
           success: true,
-          message: "تم توليد معاينة المستند بنجاح",
-          html: finalHtml,
+          message: "تم توليد معاينة المستند بنجاح (Word Engine)",
+          pdfBase64: `data:application/pdf;base64,${pdfBuffer.toString("base64")}`,
+          docxBase64: filledDocxBase64,
           data: {
             templateId: template.id,
             title: template.title,
-            html: finalHtml,
+            pdfBase64: `data:application/pdf;base64,${pdfBuffer.toString("base64")}`,
+            docxBase64: filledDocxBase64,
           },
         });
       }
 
-      logger.info(`[GenerateDocument] Converting HTML to PDF via Puppeteer for template: "${template.title}"`);
-      pdfBuffer = await generatePdfFromHtml(finalHtml, template.title);
-
-    } else if (usePdfLib) {
+    } else if (hasMasterPdf && !hasCustomHtml) {
       logger.info(
-        `[GenerateDocument] Rendering via pdf-lib (no handlebars_content). Master PDF: ${template.pdf_storage_path}`
+        `[GenerateDocument] Rendering via pdf-lib on Master PDF: ${template.pdf_storage_path}`
       );
 
       const { data: fileBlob, error: downloadError } = await supabase.storage
@@ -1464,6 +1567,67 @@ export async function GenerateDocument(req: AuthRequest, res: Response) {
         });
       }
 
+    } else if (template.handlebars_content || template.template_type === "html" || hasCustomHtml) {
+      logger.info(`[GenerateDocument] Rendering via Handlebars + Puppeteer for template: "${template.title}"`);
+
+      // Provide base64 data URI so Puppeteer embeds the logo directly without external network requests
+      if (logoBuffer) {
+        const mime = req.file?.mimetype || "image/png";
+        const logoDataUri = `data:${mime};base64,${logoBuffer.toString("base64")}`;
+        formValues.logo_url = logoDataUri;
+        formValues.logo = logoDataUri;
+      } else if (logoPublicUrl) {
+        formValues.logo_url = logoPublicUrl;
+        formValues.logo = logoPublicUrl;
+      } else {
+        formValues.logo_url = null;
+        formValues.logo = null;
+      }
+
+      // If user modified the text directly in preview ("تعديل النص"), use their custom/edited HTML
+      const editedHtml = body.customHtml || body.editedHtml || (body.html && !body.form ? body.html : null);
+      if (editedHtml && typeof editedHtml === "string" && editedHtml.trim()) {
+        logger.info(`[GenerateDocument] Using user-edited HTML for template: "${template.title}"`);
+        finalHtml = sanitizeHandlebarsTemplate(editedHtml);
+      } else {
+        // Sanitize template HTML to fix malformed tags, tabs, and prevent helperMissing errors
+        const explicitKeys = Array.isArray(template.placeholders)
+          ? template.placeholders.map((p: any) => (typeof p === "string" ? p : p.key)).filter(Boolean)
+          : [];
+        const cleanTemplateContent = sanitizeHandlebarsTemplate(template.handlebars_content || "", explicitKeys);
+
+        // Self-heal template in Supabase asynchronously if changes were made
+        if (cleanTemplateContent !== template.handlebars_content) {
+          supabase
+            .from("templates")
+            .update({ handlebars_content: cleanTemplateContent })
+            .eq("id", template.id)
+            .then(({ error: patchErr }) => {
+              if (patchErr) logger.warn(`[GenerateDocument] Self-heal template warning: ${patchErr.message}`);
+              else logger.info(`[GenerateDocument] Self-healed template "${template.id}" in database.`);
+            });
+        }
+
+        const compiledFunction = Handlebars.compile(cleanTemplateContent);
+        finalHtml = compiledFunction(formValues);
+      }
+
+      if (isPreview) {
+        return res.status(200).json({
+          success: true,
+          message: "تم توليد معاينة المستند بنجاح",
+          html: finalHtml,
+          data: {
+            templateId: template.id,
+            title: template.title,
+            html: finalHtml,
+          },
+        });
+      }
+
+      logger.info(`[GenerateDocument] Converting HTML to PDF via Puppeteer for template: "${template.title}"`);
+      pdfBuffer = await generatePdfFromHtml(finalHtml, template.title);
+
     } else {
       return res.status(400).json({
         success: false,
@@ -1498,22 +1662,46 @@ export async function GenerateDocument(req: AuthRequest, res: Response) {
 
     const pdfUrl = signedData?.signedUrl || publicUrlData?.publicUrl;
 
+    // 5. If this was a Word (DOCX) template, upload the filled .docx file as well (Clio-style)
+    let docxUrl: string | undefined = undefined;
+    let docxStoragePath: string | undefined = undefined;
+    if (filledDocxBuffer) {
+      docxStoragePath = storagePath.replace(/\.pdf$/i, ".docx");
+      const { error: docxUploadError } = await supabase.storage
+        .from("documents")
+        .upload(docxStoragePath, filledDocxBuffer, {
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          upsert: true,
+        });
+
+      if (!docxUploadError) {
+        const { data: docxSignedData } = await supabase.storage
+          .from("documents")
+          .createSignedUrl(docxStoragePath, 60 * 60 * 24 * 7);
+        docxUrl = docxSignedData?.signedUrl;
+      }
+    }
+
     logger.info(`[GenerateDocument] Document generated and uploaded to documents: ${storagePath}`);
 
     return res.status(200).json({
       success: true,
       message: "تم توليد وحفظ المستند بنجاح",
       pdfUrl,
+      docxUrl,
       publicUrl: publicUrlData?.publicUrl,
       signedUrl: signedData?.signedUrl,
       storagePath,
+      docxStoragePath,
       savedLogoId,
       html: finalHtml,
       data: {
         templateId: template.id,
         title: template.title,
         storagePath,
+        docxStoragePath,
         pdfUrl,
+        docxUrl,
         publicUrl: publicUrlData?.publicUrl,
         signedUrl: signedData?.signedUrl,
         savedLogoId,
