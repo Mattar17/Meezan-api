@@ -8,11 +8,21 @@ const openrouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
  * Handles PDFs that store Arabic characters using Presentation Forms-A/B in visual RTL order.
  * Restores them to standard Unicode Arabic in logical reading order.
  */
-export function normalizeAndUnshapeArabicText(rawText: string): string[] {
+export function normalizeAndUnshapeArabicText(rawText: string, explicitKeys?: string[]): string[] {
   const lines = rawText.split(/\r?\n/);
   const unshapedLines: string[] = [];
 
   const hasPresentationForms = /[\uFB50-\uFDFF\uFE70-\uFEFF]/.test(rawText);
+
+  // Clean and sort explicit keys longest first
+  const cleanExplicitKeys = Array.isArray(explicitKeys)
+    ? explicitKeys
+        .map((k) => (typeof k === "string" ? k.trim().replace(/^\{\{|\}\}$/g, "").replace(/\s+/g, "_") : ""))
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length)
+    : [];
+
+  const snakeCaseRegex = /(?<![\u0600-\u06FFa-zA-Z0-9_{}])([\u0600-\u06FF]+(?:_[\u0600-\u06FF0-9]+)+)(?![\u0600-\u06FFa-zA-Z0-9_}])/g;
 
   for (let rawLine of lines) {
     let line = rawLine.replace(/[\t\r]+/g, " ").trim();
@@ -32,14 +42,49 @@ export function normalizeAndUnshapeArabicText(rawText: string): string[] {
       continue;
     }
 
+    // 0. Normalize spaces/tabs around underscores (e.g. "اسم _ المحامي" -> "اسم_المحامي")
+    line = line.replace(/[\t ]*_[\t ]*/g, "_");
+
+    // 0a. Auto-normalize reversed RTL braces: }}key{{ -> {{key}}
+    line = line.replace(/\}{2,}\s*([^{}]+?)\s*\{{2,}/g, (_m, key) => {
+      const cleanKey = key
+        .trim()
+        .replace(/^[\/\\_\s{}]+/, "")
+        .replace(/[\/\\_\s{}]+$/, "")
+        .replace(/\s+/g, "_")
+        .replace(/_+/g, "_");
+      return `{{${cleanKey}}}`;
+    });
+
+    // 0b. Auto-detect explicit placeholder keys written without brackets in the PDF
+    if (cleanExplicitKeys.length > 0) {
+      for (const cleanKey of cleanExplicitKeys) {
+        const escaped = cleanKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const reg = new RegExp(`(?<![\\u0600-\\u06FFa-zA-Z0-9_{}])${escaped}(?![\\u0600-\\u06FFa-zA-Z0-9_}])`, "g");
+        line = line.replace(reg, `{{${cleanKey}}}`);
+      }
+    }
+
+    // 0c. Auto-detect any unbracketed Arabic snake_case identifier (e.g. "اسم_المحامي", "عنوان_الموكل", "رقم_الدعوى")
+    line = line.replace(snakeCaseRegex, (_m, key) => {
+      const cleanKey = key
+        .trim()
+        .replace(/^[\/\\_\s{}]+/, "")
+        .replace(/[\/\\_\s{}]+$/, "")
+        .replace(/_+/g, "_");
+      return `{{${cleanKey}}}`;
+    });
+
     // Clean any malformed placeholders in line
     line = line.replace(/\{\{([^{}]+)\}\}/g, (_match, p1) => {
       let key = p1
         .trim()
+        .replace(/^[\/\\_\s{}]+/, "")
+        .replace(/[\/\\_\s{}]+$/, "")
         .replace(/[\t\r\n]+/g, " ")
         .replace(/\s*_\s*/g, "_")
         .replace(/\s+/g, "_")
-        .replace(/^_+|_+$/g, "");
+        .replace(/_+/g, "_");
       key = key
         .replace(/احملامي/g, "المحامي")
         .replace(/كلاملو/g, "الموكل")
@@ -158,7 +203,7 @@ export function normalizeAndUnshapeArabicText(rawText: string): string[] {
  * - Normalizes known Arabic OCR key corruptions (احملامي -> المحامي, كلاملو -> الموكل, األتعاب -> الأتعاب)
  * - Removes duplicated inline signature blocks from clauses if present
  */
-export function sanitizeHandlebarsTemplate(content: string): string {
+export function sanitizeHandlebarsTemplate(content: string, explicitKeys?: string[]): string {
   if (!content || typeof content !== "string") return "";
 
   let cleaned = content;
@@ -166,14 +211,39 @@ export function sanitizeHandlebarsTemplate(content: string): string {
   // 1. Remove standalone {{logo}} or {{\tlogo\t}} if not part of #if block
   cleaned = cleaned.replace(/\{\{[\s\t]*logo[\s\t]*\}\}/gi, "");
 
-  // 2. Clean all {{ ... }} tags
+  // 2. Auto-normalize reversed/mirrored RTL braces: }}key{{ -> {{key}}
+  cleaned = cleaned.replace(/\}{2,}\s*([^{}]+?)\s*\{{2,}/g, (_m, key) => {
+    const cleanKey = key
+      .trim()
+      .replace(/^[\/\\_\s{}]+/, "")
+      .replace(/[\/\\_\s{}]+$/, "")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_");
+    return `{{${cleanKey}}}`;
+  });
+
+  // 3. Fix malformed double/nested braces like {{ / key {{}} or {{ / key }}
+  cleaned = cleaned.replace(/\{\{\s*[\/\\_]*\s*([^{}]+?)\s*(?:\{\{)?\}\}+/g, (_m, key) => {
+    const trimmed = key.trim();
+    if (/^(?:#|\/(?:if|each|unless|with)\b|else|>)/.test(trimmed)) {
+      return `{{${trimmed}}}`;
+    }
+    const cleanKey = trimmed
+      .replace(/^[\/\\_\s{}]+/, "")
+      .replace(/[\/\\_\s{}]+$/, "")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_");
+    return `{{${cleanKey}}}`;
+  });
+
+  // 4. Clean all standard {{ ... }} tags
   cleaned = cleaned.replace(/\{\{([^{}]+)\}\}/g, (match, rawInner) => {
     const trimmed = rawInner.trim();
 
     // Preserve block helpers and built-ins
     if (
       trimmed.startsWith("#") ||
-      trimmed.startsWith("/") ||
+      (trimmed.startsWith("/") && /^\/(?:if|each|unless|with)\b/i.test(trimmed)) ||
       trimmed === "else" ||
       trimmed.startsWith(">")
     ) {
@@ -181,11 +251,14 @@ export function sanitizeHandlebarsTemplate(content: string): string {
     }
 
     // Collapse tabs, newlines, and spaces around underscores
+    // Also strip accidental leading/trailing slashes, backslashes, or braces (e.g. {{/_اسم_الموكل}} -> {{اسم_الموكل}})
     let key = trimmed
+      .replace(/^[\/\\_\s{}]+/, "")
+      .replace(/[\/\\_\s{}]+$/, "")
       .replace(/[\t\r\n]+/g, " ")
       .replace(/\s*_\s*/g, "_")
       .replace(/\s+/g, "_")
-      .replace(/^_+|_+$/g, "");
+      .replace(/_+/g, "_");
 
     // Fix common Arabic PDF extractor corruptions in variable keys
     key = key
@@ -201,7 +274,25 @@ export function sanitizeHandlebarsTemplate(content: string): string {
     return `{{${key}}}`;
   });
 
-  // 3. Remove inline signature noise that leaked into clauses (since table already exists)
+  // 5. Wrap unbracketed explicit keys if provided
+  if (explicitKeys && explicitKeys.length > 0) {
+    for (const rawKey of explicitKeys) {
+      const cleanKey = String(rawKey).trim().replace(/^\{\{|\}\}$/g, "").replace(/\s+/g, "_");
+      if (!cleanKey) continue;
+      const escaped = cleanKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const reg = new RegExp(`(?<![<"'/=_\u0600-\u06FFa-zA-Z0-9{])${escaped}(?![>"'/=_\u0600-\u06FFa-zA-Z0-9}])`, "g");
+      cleaned = cleaned.replace(reg, `{{${cleanKey}}}`);
+    }
+  }
+
+  // 6. Wrap any remaining unbracketed Arabic snake_case words (ignoring HTML tags/attributes)
+  const snakeCaseHtmlRegex = /(?<![<"'/=_\u0600-\u06FFa-zA-Z0-9{])([\u0600-\u06FF]+(?:_[\u0600-\u06FF0-9]+)+)(?![>"'/=_\u0600-\u06FFa-zA-Z0-9}])/g;
+  cleaned = cleaned.replace(snakeCaseHtmlRegex, (_m, key) => {
+    const cleanKey = key.trim().replace(/^[\/\\_\s{}]+/, "").replace(/[\/\\_\s{}]+$/, "").replace(/_+/g, "_");
+    return `{{${cleanKey}}}`;
+  });
+
+  // 7. Remove inline signature noise that leaked into clauses (since table already exists)
   cleaned = cleaned.replace(
     /\(?\s*توقيع\s*[\t\s]*الطرف\s*[\t\s]*(?:الأول|األول)\s*\)?[\s\S]*?(?:<\/p>|$)/i,
     "</p>"
@@ -520,14 +611,15 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
  */
 export async function convertPdfBufferToHtmlTemplate(
   pdfBuffer: Buffer,
-  docTitle?: string
+  docTitle?: string,
+  explicitKeys?: string[]
 ): Promise<{
   handlebarsHtml: string;
   placeholders: Array<{ key: string; label: string; type: string }>;
   rawText: string;
 }> {
   const rawText = await extractTextFromPdf(pdfBuffer);
-  const unshapedLines = normalizeAndUnshapeArabicText(rawText);
+  const unshapedLines = normalizeAndUnshapeArabicText(rawText, explicitKeys);
 
   // Default deterministic high-fidelity HTML generator
   const generated = generateSemanticHtmlFromPdfText(unshapedLines, docTitle);
