@@ -1,17 +1,30 @@
 import puppeteer, { Browser } from "puppeteer";
+import puppeteerCore from "puppeteer-core";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import logger from "../utils/logger.js";
 
-let browserInstance: Browser | null = null;
+let browserInstance: Browser | any = null;
 
 /**
- * Automatically finds the best available browser executable.
+ * Checks if the current runtime environment is a serverless platform (Vercel / AWS Lambda / Linux container).
+ */
+function isServerlessEnvironment(): boolean {
+  return Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.LAMBDA_TASK_ROOT ||
+    (process.platform === "linux" && !process.env.LOCAL_DEV)
+  );
+}
+
+/**
+ * Automatically finds the best available browser executable for local development.
  * Priority:
  *   1. PUPPETEER_EXECUTABLE_PATH env var (explicit override)
- *   2. Puppeteer's own bundled Chromium (most reliable — same version Puppeteer was tested with)
- *   3. System Chrome/Edge as last resort
+ *   2. Puppeteer's own bundled Chromium
+ *   3. System Chrome/Edge
  */
 async function findExecutablePath(): Promise<string | undefined> {
   // 1. Explicit env override
@@ -20,7 +33,7 @@ async function findExecutablePath(): Promise<string | undefined> {
     return process.env.PUPPETEER_EXECUTABLE_PATH;
   }
 
-  // 2. Puppeteer's bundled Chromium (preferred — guaranteed compatible version)
+  // 2. Puppeteer's bundled Chromium
   try {
     const bundledPath = await puppeteer.executablePath();
     if (bundledPath && fs.existsSync(bundledPath)) {
@@ -47,33 +60,84 @@ async function findExecutablePath(): Promise<string | undefined> {
     }
   }
 
-  // Let Puppeteer decide (Linux/Mac with bundled Chromium downloaded via postinstall)
   return undefined;
 }
 
 /**
- * Returns a shared, running instance of Puppeteer Chromium
+ * Returns a running instance of Puppeteer Browser.
+ * Supports:
+ *   1. Remote browser via BROWSER_WS_ENDPOINT (e.g. Browserless.io)
+ *   2. Serverless Linux environment via @sparticuz/chromium-min (Vercel / AWS Lambda)
+ *   3. Local development via standard Puppeteer / System Chrome
  */
-async function getBrowser(): Promise<Browser> {
-  if (!browserInstance || !browserInstance.connected) {
-    const executablePath = await findExecutablePath();
-    logger.info(`[pdfService] Launching browser (executablePath: ${executablePath || "puppeteer-default"})...`);
-
-    const tempProfileDir = path.join(os.tmpdir(), `lawsync_puppeteer_${Date.now()}_${Math.random().toString(36).slice(2)}`);
-
-    browserInstance = await puppeteer.launch({
-      headless: true,
-      executablePath,
-      userDataDir: tempProfileDir,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-      ],
-    });
+async function getBrowser(): Promise<Browser | any> {
+  if (browserInstance && browserInstance.connected) {
+    return browserInstance;
   }
+
+  // 1. Remote Browser endpoint (Browserless.io / WebSocket)
+  if (process.env.BROWSER_WS_ENDPOINT) {
+    logger.info(`[pdfService] Connecting to remote browser endpoint: ${process.env.BROWSER_WS_ENDPOINT}`);
+    try {
+      browserInstance = await puppeteerCore.connect({
+        browserWSEndpoint: process.env.BROWSER_WS_ENDPOINT,
+      });
+      return browserInstance;
+    } catch (wsErr) {
+      logger.warn(`[pdfService] Remote browser connection failed, falling back to local: ${wsErr}`);
+    }
+  }
+
+  // 2. Serverless Linux environment (Vercel / AWS Lambda)
+  if (isServerlessEnvironment()) {
+    logger.info(`[pdfService] Running on Vercel/Serverless: initializing @sparticuz/chromium-min...`);
+    try {
+      const chromiumModule = await import("@sparticuz/chromium-min");
+      const chromium = chromiumModule.default || chromiumModule;
+
+      const arch = process.arch === "arm64" ? "arm64" : "x64";
+      const defaultPackUrl = `https://github.com/Sparticuz/chromium/releases/download/v153.0.0/chromium-v153.0.0-pack.${arch}.tar`;
+      const packUrl = process.env.CHROMIUM_PACK_URL || defaultPackUrl;
+
+      logger.info(`[pdfService] Loading serverless chromium pack from: ${packUrl}`);
+      const executablePath = await (chromium as any).executablePath(packUrl);
+
+      const args = Array.isArray((chromium as any).args)
+        ? [...(chromium as any).args, "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
+        : ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"];
+
+      browserInstance = await puppeteerCore.launch({
+        args,
+        executablePath,
+        headless: true,
+      });
+
+      return browserInstance;
+    } catch (serverlessErr) {
+      logger.error(`[pdfService] Serverless chromium launch error: ${serverlessErr}`);
+      throw new Error(`فشل تشغيل متصفح Chromium على Vercel: ${serverlessErr instanceof Error ? serverlessErr.message : String(serverlessErr)}`);
+    }
+  }
+
+  // 3. Local Development (Windows / macOS / Local Linux)
+  const executablePath = await findExecutablePath();
+  logger.info(`[pdfService] Launching local browser (executablePath: ${executablePath || "puppeteer-default"})...`);
+
+  const tempProfileDir = path.join(os.tmpdir(), `lawsync_puppeteer_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+
+  browserInstance = await puppeteer.launch({
+    headless: true,
+    executablePath,
+    userDataDir: tempProfileDir,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--disable-gpu",
+    ],
+  });
+
   return browserInstance;
 }
 
@@ -97,8 +161,7 @@ export function wrapHtmlForPrint(bodyHtml: string, title: string = "مستند �
     }
     @page {
       size: A4;
-      /* Single margin definition — do NOT also pass margin to page.pdf() */
-      margin: 20mm 15mm 20mm 15mm;
+      margin: 8mm 10mm 8mm 10mm;
     }
     @media print {
       body {
@@ -107,10 +170,9 @@ export function wrapHtmlForPrint(bodyHtml: string, title: string = "مستند �
       }
     }
     body {
-      /* Use system Arabic fonts — no network required in headless mode */
       font-family: 'Traditional Arabic', 'Amiri', 'Cairo', 'Segoe UI', Tahoma, Arial, 'DejaVu Sans', sans-serif;
-      font-size: 14pt;
-      line-height: 2.15;
+      font-size: 13.5pt;
+      line-height: 1.6;
       color: #1e293b;
       margin: 0;
       padding: 0;
@@ -118,7 +180,8 @@ export function wrapHtmlForPrint(bodyHtml: string, title: string = "مستند �
       text-align: right;
     }
     p {
-      margin-bottom: 0.9em;
+      margin-top: 0;
+      margin-bottom: 4pt;
       text-align: justify;
       text-justify: inter-word;
       color: #1e293b;
@@ -130,13 +193,27 @@ export function wrapHtmlForPrint(bodyHtml: string, title: string = "مستند �
     h1, h2, h3, h4 {
       text-align: center;
       color: #0d1b2a;
-      margin-top: 0.5em;
-      margin-bottom: 0.8em;
+      margin-top: 4pt;
+      margin-bottom: 8pt;
       font-weight: bold;
-      border-bottom: 3px double #b8975a;
-      padding-bottom: 8px;
+      border-bottom: 2px solid #b8975a;
+      padding-bottom: 4px;
     }
-    /* Strip any rogue inline padding/font overrides from AI-generated HTML */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+      page-break-inside: auto;
+      break-inside: auto;
+    }
+    tr, td {
+      border: 1px solid #444;
+      padding: 4pt 8pt;
+      vertical-align: top;
+      text-align: right;
+      page-break-inside: auto;
+      break-inside: auto;
+    }
     div[dir="rtl"] {
       padding: 0 !important;
       font-family: inherit !important;
@@ -160,8 +237,6 @@ export async function generatePdfFromHtml(html: string, title?: string): Promise
     const fullHtml = wrapHtmlForPrint(html, title);
 
     await page.setContent(fullHtml, {
-      // "load" is sufficient here because we use system fonts only (Tahoma/Arial/Segoe UI).
-      // There are no external font or asset requests, so the page is fully ready on "load".
       waitUntil: "load",
       timeout: 30000,
     });
@@ -169,8 +244,6 @@ export async function generatePdfFromHtml(html: string, title?: string): Promise
     const pdfUint8Array = await page.pdf({
       format: "A4",
       printBackground: true,
-      // Do NOT set margin here — @page CSS margin in wrapHtmlForPrint handles it.
-      // Setting both causes double-margin and crushes the content area.
     });
 
     return Buffer.from(pdfUint8Array);
@@ -180,6 +253,13 @@ export async function generatePdfFromHtml(html: string, title?: string): Promise
     throw err;
   } finally {
     await page.close().catch(() => {});
+    // In serverless environments (Vercel), close browser instance to free lambda memory
+    if (isServerlessEnvironment() && browserInstance) {
+      try {
+        await browserInstance.close();
+      } catch {}
+      browserInstance = null;
+    }
   }
 }
 
