@@ -141,12 +141,72 @@ async function getBrowser(): Promise<Browser | any> {
   return browserInstance;
 }
 
+let cachedFontFace: string | null = null;
+
+/**
+ * Returns a cached CSS @font-face string with base64 embedded Traditional Arabic font.
+ */
+export function getArabicFontFace(): string {
+  if (cachedFontFace !== null) return cachedFontFace;
+
+  try {
+    const candidates = [
+      path.resolve(process.cwd(), "src/assets/fonts/trado.ttf"),
+      path.resolve(process.cwd(), "dist/assets/fonts/trado.ttf"),
+      path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "../assets/fonts/trado.ttf"),
+    ];
+
+    for (const fontPath of candidates) {
+      if (fs.existsSync(fontPath)) {
+        const tradoBase64 = fs.readFileSync(fontPath).toString("base64");
+        cachedFontFace = `
+          @font-face {
+            font-family: 'Traditional Arabic';
+            src: url('data:font/truetype;charset=utf-8;base64,${tradoBase64}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+          }
+          @font-face {
+            font-family: 'Traditional Arabic';
+            src: url('data:font/truetype;charset=utf-8;base64,${tradoBase64}') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+            font-display: swap;
+          }
+        `;
+        logger.info(`[pdfService] Loaded Traditional Arabic font successfully from ${fontPath}`);
+        return cachedFontFace;
+      }
+    }
+  } catch (err) {
+    logger.warn(`[pdfService] Could not load local font file: ${err}`);
+  }
+
+  cachedFontFace = "";
+  return cachedFontFace;
+}
+
 /**
  * Wraps Handlebars HTML inside a fully-formed HTML document with A4 page styles and Arabic fonts.
- * Uses system fonts (Tahoma/Arial) embedded directly to avoid Google Fonts network dependency in headless Puppeteer.
+ * Injects embedded Traditional Arabic font (@font-face) + Google Fonts fallback (Amiri / Cairo).
  */
 export function wrapHtmlForPrint(bodyHtml: string, title: string = "مستند قانوني"): string {
+  const fontFace = getArabicFontFace();
+  const fontLinks = `
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+`;
+
   if (bodyHtml.includes("<html") && bodyHtml.includes("</html>")) {
+    // If the HTML already contains <head>, inject font links and font-face style inside <head>
+    if (bodyHtml.includes("<head>")) {
+      return bodyHtml.replace(
+        "<head>",
+        `<head>${fontLinks}<style>${fontFace}</style>`
+      );
+    }
     return bodyHtml;
   }
 
@@ -155,7 +215,9 @@ export function wrapHtmlForPrint(bodyHtml: string, title: string = "مستند �
 <head>
   <meta charset="UTF-8">
   <title>${title}</title>
+  ${fontLinks}
   <style>
+    ${fontFace}
     * {
       box-sizing: border-box;
     }
@@ -170,7 +232,7 @@ export function wrapHtmlForPrint(bodyHtml: string, title: string = "مستند �
       }
     }
     body {
-      font-family: 'Traditional Arabic', 'Amiri', 'Cairo', 'Segoe UI', Tahoma, Arial, 'DejaVu Sans', sans-serif;
+      font-family: 'Traditional Arabic', 'Amiri', 'Cairo', 'Noto Naskh Arabic', 'Segoe UI', Tahoma, Arial, 'DejaVu Sans', sans-serif;
       font-size: 13.5pt;
       line-height: 1.6;
       color: #1e293b;
@@ -237,13 +299,26 @@ export async function generatePdfFromHtml(html: string, title?: string): Promise
     const fullHtml = wrapHtmlForPrint(html, title);
 
     await page.setContent(fullHtml, {
-      waitUntil: "load",
+      waitUntil: ["load", "networkidle0"],
       timeout: 30000,
     });
+
+    // Ensure all @font-face and external web fonts are fully downloaded and rendered
+    try {
+      await page.evaluateHandle(() => document.fonts.ready);
+    } catch (fontErr) {
+      logger.warn(`[generatePdfFromHtml] document.fonts.ready warning: ${fontErr}`);
+    }
 
     const pdfUint8Array = await page.pdf({
       format: "A4",
       printBackground: true,
+      margin: {
+        top: "8mm",
+        right: "10mm",
+        bottom: "8mm",
+        left: "10mm",
+      },
     });
 
     return Buffer.from(pdfUint8Array);
