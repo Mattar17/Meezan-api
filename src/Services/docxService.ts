@@ -8,7 +8,7 @@ import path from "path";
 import os from "os";
 import { PDFDocument } from "pdf-lib";
 import logger from "../utils/logger.js";
-import { generatePdfFromHtml } from "./pdfService.js";
+import { generatePdfFromHtml, getArabicFontFace } from "./pdfService.js";
 
 const execAsync = promisify(exec);
 
@@ -391,13 +391,18 @@ export async function convertDocxToHtml(docxBuffer: Buffer, docTitle?: string): 
   );
 
   const bodyHtml = result.value || "";
+  const fontFace = getArabicFontFace();
 
   return `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="utf-8">
   <title>${docTitle || "مستند قانوني"}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
+    ${fontFace}
     @page {
       size: A4;
       margin: 8mm 10mm 8mm 10mm;
@@ -406,7 +411,7 @@ export async function convertDocxToHtml(docxBuffer: Buffer, docTitle?: string): 
       box-sizing: border-box;
     }
     body {
-      font-family: 'Traditional Arabic', 'Amiri', 'Cairo', 'Arial', sans-serif;
+      font-family: 'Traditional Arabic', 'Amiri', 'Cairo', 'Noto Naskh Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
       font-size: 13.5pt;
       line-height: 1.55;
       color: #111;
@@ -437,16 +442,32 @@ export async function convertDocxToHtml(docxBuffer: Buffer, docTitle?: string): 
       border-collapse: collapse;
       margin: 0;
       font-size: 13pt;
+      table-layout: fixed;
       page-break-inside: auto;
       break-inside: auto;
     }
-    tr, td {
+    /* Standard Egyptian legal notice (اعادة اعلان / صحيفة دعوى) 2-column layout */
+    table tr td:first-child:not(:only-child) {
+      width: 82%;
+      vertical-align: top;
+      border-left: 1.5px solid #222;
+      border-right: none;
+      border-top: none;
+      border-bottom: none;
+      padding: 4pt 8pt;
+      text-align: right;
+    }
+    table tr td:last-child:not(:only-child) {
+      width: 18%;
+      vertical-align: top;
+      border: none;
+      text-align: center;
+      padding: 4pt 6pt;
+    }
+    table tr td:only-child {
       border: 1px solid #333;
       padding: 4pt 8pt;
-      vertical-align: top;
       text-align: right;
-      page-break-inside: auto;
-      break-inside: auto;
     }
     th {
       background-color: #f5f5f5;
